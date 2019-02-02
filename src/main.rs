@@ -85,6 +85,7 @@ fn main() {
     let label_available = "AVAILABLE";
     let label_total = "TOTAL";
     let label_mounted = "MOUNTED ON";
+    let label_used = "USED";
 
     let fsname_width = mnts
         .iter()
@@ -100,9 +101,10 @@ fn main() {
         .unwrap_or(label_type.len());
 
     println!(
-        "{:<fsname_width$} {:<type_width$}              {:>10} {:>9} {}",
+        "{:<fsname_width$} {:<type_width$}               {} {:>10} {:>9} {}",
         label_fsname,
         label_type,
+        label_used,
         label_available,
         label_total,
         label_mounted,
@@ -111,23 +113,24 @@ fn main() {
     );
     for mnt in mnts {
         let mut stat = unsafe { mem::uninitialized() };
-        let (total, free) = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
+        let (total, available) = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
             Ok(_) => (
-                stat.f_blocks * (stat.f_frsize as u64) / 1024 / 1024,
-                stat.f_bfree * (stat.f_frsize as u64) / 1024 / 1024,
+                stat.f_blocks * (stat.f_frsize as u64),
+                stat.f_bavail * (stat.f_frsize as u64),
             ),
             Err(_) => (0, 0),
         };
 
-        let free_sections = free * 10 / total as u64;
+        let used_percentage = 100 - available * 100 / total as u64;
         println!(
-            "{:<fsname_width$} {:<type_width$} [{}{}] {:>10} {:>9} {}",
+            "{:<fsname_width$} {:<type_width$} [{}{}] {:>4}% {:>10} {:>9} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            String::from_utf8(vec![b'#'; 10 - free_sections as usize]).unwrap(),
-            String::from_utf8(vec![b'.'; free_sections as usize]).unwrap(),
-            free,
-            total,
+            String::from_utf8(vec![b'#'; (used_percentage / 10) as usize]).unwrap(),
+            String::from_utf8(vec![b'.'; 10 - ((used_percentage) / 10) as usize]).unwrap(),
+            used_percentage,
+            available / 1024 / 1,
+            total / 1024 / 1,
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width
