@@ -92,7 +92,7 @@ fn main() {
     let label_fsname = "FILESYSTEM";
     let label_type = "TYPE";
     let label_bar = "";
-    let label_used = "USED";
+    let label_used = "%USED";
     let label_available = "AVAILABLE";
     let label_total = "TOTAL";
     let label_mounted = "MOUNTED ON";
@@ -111,7 +111,7 @@ fn main() {
         .unwrap_or(label_type.len());
 
     println!(
-        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {} {:>10} {:>9} {}",
+        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>10} {:>9} {}",
         label_fsname,
         label_type,
         label_bar,
@@ -133,13 +133,13 @@ fn main() {
             Err(_) => (0, 0),
         };
 
-        let used_percentage = (100 - available * 100 / total) as u8;
+        let used_percentage = 100.0 - available as f32 * 100.0 / total as f32;
         println!(
-            "{:<fsname_width$} {:<type_width$} {} {:>3}% {:>10} {:>9} {}",
+            "{:<fsname_width$} {:<type_width$} {} {:>5.1}% {:>10} {:>9} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            bar(bar_width, used_percentage),
-            used_percentage,
+            bar(bar_width, used_percentage.ceil() as u8),
+            (used_percentage * 10.0).round() / 10.0,
             available / 1024 / 1,
             total / 1024 / 1,
             mnt.mnt_dir,
