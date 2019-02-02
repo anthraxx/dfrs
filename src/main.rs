@@ -62,9 +62,18 @@ fn get_mounts() -> Vec<MountEntry> {
     mnts
 }
 
+fn bar(width: usize, percentage: u8) -> String {
+    let filled = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
+    let fill = String::from_utf8(vec![b'#'; filled]).unwrap();
+    let empty = String::from_utf8(vec![b'.'; width - 2 - filled]).unwrap();
+    format!("[{}{}]", fill, empty)
+}
+
 fn main() {
     let _accept_minimal = vec!["/dev*"];
     let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
+
+    let bar_width = 22;
 
     let mnts = get_mounts();
     let mnts: Vec<&MountEntry> = mnts
@@ -82,10 +91,11 @@ fn main() {
 
     let label_fsname = "FILESYSTEM";
     let label_type = "TYPE";
+    let label_bar = "";
+    let label_used = "USED";
     let label_available = "AVAILABLE";
     let label_total = "TOTAL";
     let label_mounted = "MOUNTED ON";
-    let label_used = "USED";
 
     let fsname_width = mnts
         .iter()
@@ -101,15 +111,17 @@ fn main() {
         .unwrap_or(label_type.len());
 
     println!(
-        "{:<fsname_width$} {:<type_width$}               {} {:>10} {:>9} {}",
+        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {} {:>10} {:>9} {}",
         label_fsname,
         label_type,
+        label_bar,
         label_used,
         label_available,
         label_total,
         label_mounted,
         fsname_width = fsname_width,
-        type_width = type_width
+        type_width = type_width,
+        bar_width = bar_width
     );
     for mnt in mnts {
         let mut stat = unsafe { mem::uninitialized() };
@@ -121,19 +133,18 @@ fn main() {
             Err(_) => (0, 0),
         };
 
-        let used_percentage = 100 - available * 100 / total as u64;
+        let used_percentage = (100 - available * 100 / total) as u8;
         println!(
-            "{:<fsname_width$} {:<type_width$} [{}{}] {:>4}% {:>10} {:>9} {}",
+            "{:<fsname_width$} {:<type_width$} {} {:>3}% {:>10} {:>9} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            String::from_utf8(vec![b'#'; (used_percentage / 10) as usize]).unwrap(),
-            String::from_utf8(vec![b'.'; 10 - ((used_percentage) / 10) as usize]).unwrap(),
+            bar(bar_width, used_percentage),
             used_percentage,
             available / 1024 / 1,
             total / 1024 / 1,
             mnt.mnt_dir,
             fsname_width = fsname_width,
-            type_width = type_width
+            type_width = type_width,
         );
     }
 }
