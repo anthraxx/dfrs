@@ -1,8 +1,13 @@
+extern crate libc;
+extern crate nix;
+
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::mem;
 
-#[derive(Debug)]
+use nix::sys::statfs;
+
 pub struct MountEntry {
     pub mnt_fsname: String,
     pub mnt_dir: String,
@@ -77,6 +82,9 @@ fn main() {
 
     let label_fsname = "FILESYSTEM";
     let label_type = "TYPE";
+    let label_available = "AVAILABLE";
+    let label_total = "TOTAL";
+    let label_mounted = "MOUNTED ON";
 
     let fsname_width = mnts
         .iter()
@@ -92,18 +100,34 @@ fn main() {
         .unwrap_or(label_type.len());
 
     println!(
-        "{:<fsname_width$} {:<type_width$}                {}",
+        "{:<fsname_width$} {:<type_width$}              {:>10} {:>9} {}",
         label_fsname,
         label_type,
-        "MOUNTED ON",
+        label_available,
+        label_total,
+        label_mounted,
         fsname_width = fsname_width,
         type_width = type_width
     );
     for mnt in mnts {
+        let mut stat = unsafe { mem::uninitialized() };
+        let (total, free) = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
+            Ok(_) => (
+                stat.f_blocks * (stat.f_frsize as u64) / 1024 / 1024,
+                stat.f_bfree * (stat.f_frsize as u64) / 1024 / 1024,
+            ),
+            Err(_) => (0, 0),
+        };
+
+        let free_sections = free * 10 / total as u64;
         println!(
-            "{:<fsname_width$} {:<type_width$} [######......] {}",
+            "{:<fsname_width$} {:<type_width$} [{}{}] {:>10} {:>9} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
+            String::from_utf8(vec![b'#'; 10 - free_sections as usize]).unwrap(),
+            String::from_utf8(vec![b'.'; free_sections as usize]).unwrap(),
+            free,
+            total,
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width
