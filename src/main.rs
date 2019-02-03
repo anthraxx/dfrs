@@ -15,6 +15,7 @@ pub struct MountEntry {
     pub mnt_opts: String,
     pub mnt_freq: i32,
     pub mnt_passno: i32,
+    pub statfs: Option<libc::statfs>
 }
 
 impl MountEntry {
@@ -33,6 +34,7 @@ impl MountEntry {
             mnt_opts,
             mnt_freq,
             mnt_passno,
+            statfs: Option::None
         }
     }
 }
@@ -49,11 +51,10 @@ fn parse_mount_line(line: &str) -> MountEntry {
     )
 }
 
-fn get_mounts() -> Vec<MountEntry> {
+fn get_mounts(f: File) -> Vec<MountEntry> {
     let mut mnts = Vec::new();
 
-    let f = File::open("/proc/self/mounts").unwrap();
-    let file = BufReader::new(&f);
+    let file = BufReader::new(f);
 
     for line in file.lines() {
         mnts.push(parse_mount_line(&line.unwrap()));
@@ -70,14 +71,15 @@ fn bar(width: usize, percentage: u8) -> String {
 }
 
 fn main() {
+    let f = File::open("/proc/self/mounts").unwrap();
     let _accept_minimal = vec!["/dev*"];
     let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
 
     let bar_width = 22;
 
-    let mnts = get_mounts();
-    let mnts: Vec<&MountEntry> = mnts
-        .iter()
+    let mut mnts = get_mounts(f);
+    let mut mnts: Vec<&mut MountEntry> = mnts
+        .iter_mut()
         .filter(|m| {
             _accept_more.iter().any(|&x| {
                 if x.ends_with("*") {
@@ -88,6 +90,15 @@ fn main() {
             })
         })
         .collect();
+
+    for mnt in mnts.iter_mut() {
+        let mut stat = unsafe { mem::uninitialized() };
+        let stat_opt = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
+            Ok(_) => Option::Some(stat),
+            Err(_) => Option::None
+        };
+        mnt.statfs = stat_opt;
+    }
 
     let label_fsname = "FILESYSTEM";
     let label_type = "TYPE";
@@ -124,13 +135,12 @@ fn main() {
         bar_width = bar_width
     );
     for mnt in mnts {
-        let mut stat = unsafe { mem::uninitialized() };
-        let (total, available) = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
-            Ok(_) => (
+        let (total, available) = match mnt.statfs {
+            Some(stat) => (
                 stat.f_blocks * (stat.f_frsize as u64),
                 stat.f_bavail * (stat.f_frsize as u64),
             ),
-            Err(_) => (0, 0),
+            None => (0, 0)
         };
 
         let used_percentage = 100.0 - available as f32 * 100.0 / total as f32;
