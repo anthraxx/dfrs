@@ -1,5 +1,5 @@
-extern crate libc;
-extern crate nix;
+#[macro_use]
+extern crate failure;
 
 use std::fs::File;
 use std::io::BufRead;
@@ -8,6 +8,9 @@ use std::mem;
 
 use nix::sys::statfs;
 
+mod errors;
+use errors::*;
+
 pub struct MountEntry {
     pub mnt_fsname: String,
     pub mnt_dir: String,
@@ -15,7 +18,7 @@ pub struct MountEntry {
     pub mnt_opts: String,
     pub mnt_freq: i32,
     pub mnt_passno: i32,
-    pub statfs: Option<libc::statfs>
+    pub statfs: Option<libc::statfs>,
 }
 
 impl MountEntry {
@@ -34,33 +37,50 @@ impl MountEntry {
             mnt_opts,
             mnt_freq,
             mnt_passno,
-            statfs: Option::None
+            statfs: Option::None,
         }
     }
 }
 
-fn parse_mount_line(line: &str) -> MountEntry {
+fn parse_mount_line(line: &str) -> Result<MountEntry> {
     let mut mnt_a = line.split_whitespace();
-    MountEntry::new(
-        mnt_a.next().unwrap().to_string(),
-        mnt_a.next().unwrap().to_string(),
-        mnt_a.next().unwrap().to_string(),
-        mnt_a.next().unwrap().to_string(),
-        mnt_a.next().unwrap().parse::<i32>().unwrap(),
-        mnt_a.next().unwrap().parse::<i32>().unwrap(),
-    )
+    Ok(MountEntry::new(
+        mnt_a
+            .next()
+            .ok_or_else(|| format_err!("Missing value fsname"))?
+            .into(),
+        mnt_a
+            .next()
+            .ok_or_else(|| format_err!("Missing value dir"))?
+            .into(),
+        mnt_a
+            .next()
+            .ok_or_else(|| format_err!("Missing value type"))?
+            .into(),
+        mnt_a
+            .next()
+            .ok_or_else(|| format_err!("Missing value opts"))?
+            .into(),
+        mnt_a
+            .next()
+            .ok_or_else(|| format_err!("Missing value freq"))?
+            .parse::<i32>()?,
+        mnt_a
+            .next()
+            .ok_or_else(|| format_err!("Missing value passno"))?
+            .parse::<i32>()?,
+    ))
 }
 
-fn get_mounts(f: File) -> Vec<MountEntry> {
-    let mut mnts = Vec::new();
-
-    let file = BufReader::new(f);
-
-    for line in file.lines() {
-        mnts.push(parse_mount_line(&line.unwrap()));
-    }
-
-    mnts
+fn get_mounts(f: File) -> Result<Vec<MountEntry>> {
+    BufReader::new(f)
+        .lines()
+        .map(|line| {
+            parse_mount_line(&line?)
+                .context("Failed to parse mount line")
+                .map_err(Error::from)
+        })
+        .collect::<Result<Vec<_>>>()
 }
 
 fn bar(width: usize, percentage: u8) -> String {
@@ -70,14 +90,14 @@ fn bar(width: usize, percentage: u8) -> String {
     format!("[{}{}]", fill, empty)
 }
 
-fn main() {
-    let f = File::open("/proc/self/mounts").unwrap();
+fn run() -> Result<()> {
+    let f = File::open("/proc/self/mounts")?;
     let _accept_minimal = vec!["/dev*"];
     let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
 
     let bar_width = 22;
 
-    let mut mnts = get_mounts(f);
+    let mut mnts = get_mounts(f)?;
     let mut mnts: Vec<&mut MountEntry> = mnts
         .iter_mut()
         .filter(|m| {
@@ -95,7 +115,7 @@ fn main() {
         let mut stat = unsafe { mem::uninitialized() };
         let stat_opt = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
             Ok(_) => Option::Some(stat),
-            Err(_) => Option::None
+            Err(_) => Option::None,
         };
         mnt.statfs = stat_opt;
     }
@@ -140,7 +160,7 @@ fn main() {
                 stat.f_blocks * (stat.f_frsize as u64),
                 stat.f_bavail * (stat.f_frsize as u64),
             ),
-            None => (0, 0)
+            None => (0, 0),
         };
 
         let used_percentage = 100.0 - available as f32 * 100.0 / total as f32;
@@ -156,5 +176,17 @@ fn main() {
             fsname_width = fsname_width,
             type_width = type_width,
         );
+    }
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(err) = run() {
+        eprintln!("Error: {}", err);
+        for cause in err.iter_chain().skip(1) {
+            eprintln!("Because: {}", cause);
+        }
+        std::process::exit(1);
     }
 }
