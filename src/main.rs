@@ -97,9 +97,9 @@ fn run() -> Result<()> {
 
     let bar_width = 22;
 
-    let mut mnts = get_mounts(f)?;
-    let mut mnts: Vec<&mut MountEntry> = mnts
-        .iter_mut()
+    let mnts = get_mounts(f)?;
+    let mut mnts = mnts
+        .into_iter()
         .filter(|m| {
             _accept_more.iter().any(|&x| {
                 if x.ends_with("*") {
@@ -109,9 +109,9 @@ fn run() -> Result<()> {
                 }
             })
         })
-        .collect();
+        .collect::<Vec<_>>();
 
-    for mnt in mnts.iter_mut() {
+    for mnt in &mut mnts {
         let mut stat = unsafe { mem::uninitialized() };
         let stat_opt = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
             Ok(_) => Option::Some(stat),
