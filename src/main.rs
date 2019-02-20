@@ -85,8 +85,8 @@ fn get_mounts(f: File) -> Result<Vec<MountEntry>> {
 
 fn bar(width: usize, percentage: u8) -> String {
     let filled = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
-    let fill = String::from_utf8(vec![b'#'; filled]).unwrap();
-    let empty = String::from_utf8(vec![b'.'; width - 2 - filled]).unwrap();
+    let fill = "#".repeat(filled);
+    let empty = ".".repeat(width - 2 - filled);
     format!("[{}{}]", fill, empty)
 }
 
