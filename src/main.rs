@@ -31,6 +31,15 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
     format!("[{}{}]", fill, empty)
 }
 
+#[inline]
+fn column_width(mnt: &Vec<MountEntry>, f: &Fn(&MountEntry) -> usize, heading: &str) -> usize {
+    mnt.iter()
+        .map(f)
+        .chain(std::iter::once(heading.len()))
+        .max()
+        .unwrap()
+}
+
 fn run() -> Result<()> {
     let theme = Theme::new();
     let f = File::open("/proc/self/mounts")?;
@@ -84,40 +93,11 @@ fn run() -> Result<()> {
     let label_size = "Size";
     let label_mounted = "Mounted on";
 
-    let fsname_width = mnts
-        .iter()
-        .map(|m| m.mnt_fsname.len())
-        .chain(std::iter::once(label_fsname.len()))
-        .max()
-        .unwrap_or(label_fsname.len());
-
-    let type_width = mnts
-        .iter()
-        .map(|m| m.mnt_type.len())
-        .chain(std::iter::once(label_type.len()))
-        .max()
-        .unwrap_or(label_type.len());
-
-    let used_width = mnts
-        .iter()
-        .map(|m| m.used.len())
-        .chain(std::iter::once(label_used.len()))
-        .max()
-        .unwrap_or(label_used.len());
-
-    let available_width = mnts
-        .iter()
-        .map(|m| m.available.len())
-        .chain(std::iter::once(label_available.len()))
-        .max()
-        .unwrap_or(label_available.len());
-
-    let size_width = mnts
-        .iter()
-        .map(|m| m.size.len())
-        .chain(std::iter::once(label_size.len()))
-        .max()
-        .unwrap_or(label_size.len());
+    let fsname_width = column_width(&mnts, &|m: &MountEntry| m.mnt_fsname.len(), label_fsname);
+    let type_width = column_width(&mnts, &|m: &MountEntry| m.mnt_type.len(), label_type);
+    let used_width = column_width(&mnts, &|m: &MountEntry| m.used.len(), label_used);
+    let available_width = column_width(&mnts, &|m: &MountEntry| m.available.len(), label_available);
+    let size_width = column_width(&mnts, &|m: &MountEntry| m.size.len(), label_size);
 
     println!(
         "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>size_width$} {}",
