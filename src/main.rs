@@ -17,20 +17,41 @@ mod mount;
 use mount::*;
 
 fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
-    let filled_count = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
-    let fill = theme
+    let fill_len_total = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
+    let fill_len_low = std::cmp::min(
+        fill_len_total,
+        ((width - 2) as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
+    );
+    let fill_len_medium = std::cmp::min(
+        fill_len_total,
+        ((width - 2) as f32 * theme.threshold_usage_high / 100.0).ceil() as usize,
+    ) - fill_len_low;
+    let fill_len_high = fill_len_total - fill_len_low - fill_len_medium;
+
+    let fill_low = theme
         .char_bar_filled
         .to_string()
-        .repeat(filled_count)
-        .color(theme.color_usage_low.unwrap_or(Color::White));
+        .repeat(fill_len_low)
+        .color(theme.color_usage_low.unwrap_or(Color::Green));
+    let fill_medium = theme
+        .char_bar_filled
+        .to_string()
+        .repeat(fill_len_medium)
+        .color(theme.color_usage_medium.unwrap_or(Color::Yellow));
+    let fill_high = theme
+        .char_bar_filled
+        .to_string()
+        .repeat(fill_len_high)
+        .color(theme.color_usage_high.unwrap_or(Color::Red));
     let empty = theme
         .char_bar_empty
         .to_string()
-        .repeat(width - 2 - filled_count)
+        .repeat(width - 2 - fill_len_total)
         .color(theme.color_usage_low.unwrap_or(Color::White));
+
     format!(
-        "{}{}{}{}",
-        theme.char_bar_open, fill, empty, theme.char_bar_close
+        "{}{}{}{}{}{}",
+        theme.char_bar_open, fill_low, fill_medium, fill_high, empty, theme.char_bar_close
     )
 }
 
