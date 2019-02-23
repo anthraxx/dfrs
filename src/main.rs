@@ -78,7 +78,7 @@ fn run() -> Result<()> {
             None => (0, 0),
         };
 
-        mnt.used_percentage = 100.0 - available as f32 * 100.0 / size as f32;
+        mnt.used_percentage = 100.0 - available as f32 * 100.0 / std::cmp::max(size, 1) as f32;
         mnt.used = format!("{}", (size - available) / 1024 / 1);
         mnt.available = format!("{}", available / 1024 / 1);
         mnt.size = format!("{}", size / 1024 / 1);
