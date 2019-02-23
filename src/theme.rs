@@ -5,10 +5,12 @@ pub struct Theme {
     pub char_bar_empty: char,
     pub char_bar_open: char,
     pub char_bar_close: char,
+    pub threshold_usage_medium: f32,
+    pub threshold_usage_high: f32,
     pub color_headline: Option<Color>,
     pub color_usage_low: Option<Color>,
     pub color_usage_medium: Option<Color>,
-    pub color_usage_critical: Option<Color>,
+    pub color_usage_high: Option<Color>,
 }
 
 impl Theme {
@@ -18,10 +20,12 @@ impl Theme {
             char_bar_empty: named_char::HEAVY_DOUBLE_DASH,
             char_bar_open: named_char::SPACE,
             char_bar_close: named_char::SPACE,
+            threshold_usage_medium: 50.0,
+            threshold_usage_high: 75.0,
             color_headline: Some(Color::Blue),
             color_usage_low: Some(Color::Green),
             color_usage_medium: Some(Color::Yellow),
-            color_usage_critical: Some(Color::Red),
+            color_usage_high: Some(Color::Red),
         }
     }
 }

@@ -17,16 +17,16 @@ mod mount;
 use mount::*;
 
 fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
-    let filled = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
+    let filled_count = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
     let fill = theme
         .char_bar_filled
         .to_string()
-        .repeat(filled)
+        .repeat(filled_count)
         .color(theme.color_usage_low.unwrap_or(Color::White));
     let empty = theme
         .char_bar_empty
         .to_string()
-        .repeat(width - 2 - filled)
+        .repeat(width - 2 - filled_count)
         .color(theme.color_usage_low.unwrap_or(Color::White));
     format!(
         "{}{}{}{}",
@@ -122,19 +122,24 @@ fn run() -> Result<()> {
         size_width = size_width,
     );
     for mnt in mnts {
+        let color_usage = match mnt.used_percentage {
+            p if p >= theme.threshold_usage_high => theme.color_usage_high,
+            p if p >= theme.threshold_usage_medium => theme.color_usage_medium,
+            _ => theme.color_usage_low,
+        };
         println!(
             "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
             format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0)
-                .color(theme.color_usage_low.unwrap_or(Color::White)),
+                .color(color_usage.unwrap_or(Color::White)),
             mnt.used
-                .color(theme.color_usage_low.unwrap_or(Color::White)),
+                .color(color_usage.unwrap_or(Color::White)),
             mnt.available
-                .color(theme.color_usage_low.unwrap_or(Color::White)),
+                .color(color_usage.unwrap_or(Color::White)),
             mnt.size
-                .color(theme.color_usage_low.unwrap_or(Color::White)),
+                .color(color_usage.unwrap_or(Color::White)),
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width,
