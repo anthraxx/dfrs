@@ -28,7 +28,10 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
         .to_string()
         .repeat(width - 2 - filled)
         .color(theme.color_usage_low.unwrap_or(Color::White));
-    format!("[{}{}]", fill, empty)
+    format!(
+        "{}{}{}{}",
+        theme.char_bar_open, fill, empty, theme.char_bar_close
+    )
 }
 
 #[inline]
