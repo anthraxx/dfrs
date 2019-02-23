@@ -45,6 +45,8 @@ fn run() -> Result<()> {
     let f = File::open("/proc/self/mounts")?;
     let _accept_minimal = vec!["/dev*"];
     let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
+    let _accept_all = vec!["*"];
+    let mounts_to_show = _accept_all;
 
     let bar_width = 22;
 
@@ -52,7 +54,7 @@ fn run() -> Result<()> {
     let mut mnts = mnts
         .into_iter()
         .filter(|m| {
-            _accept_more.iter().any(|&x| {
+            mounts_to_show.iter().any(|&x| {
                 if x.ends_with("*") {
                     m.mnt_fsname.starts_with(&x[..x.len() - 1])
                 } else {
