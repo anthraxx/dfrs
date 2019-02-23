@@ -1,96 +1,38 @@
-#[macro_use]
 extern crate failure;
 
 use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::mem;
 
 use nix::sys::statfs;
 
+use colored::*;
+
 mod errors;
 use errors::*;
 
-pub struct MountEntry {
-    pub mnt_fsname: String,
-    pub mnt_dir: String,
-    pub mnt_type: String,
-    pub mnt_opts: String,
-    pub mnt_freq: i32,
-    pub mnt_passno: i32,
-    pub statfs: Option<libc::statfs>,
-}
+mod theme;
+use theme::Theme;
 
-impl MountEntry {
-    fn new(
-        mnt_fsname: String,
-        mnt_dir: String,
-        mnt_type: String,
-        mnt_opts: String,
-        mnt_freq: i32,
-        mnt_passno: i32,
-    ) -> MountEntry {
-        MountEntry {
-            mnt_fsname,
-            mnt_dir,
-            mnt_type,
-            mnt_opts,
-            mnt_freq,
-            mnt_passno,
-            statfs: Option::None,
-        }
-    }
-}
+mod mount;
+use mount::*;
 
-fn parse_mount_line(line: &str) -> Result<MountEntry> {
-    let mut mnt_a = line.split_whitespace();
-    Ok(MountEntry::new(
-        mnt_a
-            .next()
-            .ok_or_else(|| format_err!("Missing value fsname"))?
-            .into(),
-        mnt_a
-            .next()
-            .ok_or_else(|| format_err!("Missing value dir"))?
-            .into(),
-        mnt_a
-            .next()
-            .ok_or_else(|| format_err!("Missing value type"))?
-            .into(),
-        mnt_a
-            .next()
-            .ok_or_else(|| format_err!("Missing value opts"))?
-            .into(),
-        mnt_a
-            .next()
-            .ok_or_else(|| format_err!("Missing value freq"))?
-            .parse::<i32>()?,
-        mnt_a
-            .next()
-            .ok_or_else(|| format_err!("Missing value passno"))?
-            .parse::<i32>()?,
-    ))
-}
-
-fn get_mounts(f: File) -> Result<Vec<MountEntry>> {
-    BufReader::new(f)
-        .lines()
-        .map(|line| {
-            parse_mount_line(&line?)
-                .context("Failed to parse mount line")
-                .map_err(Error::from)
-        })
-        .collect::<Result<Vec<_>>>()
-}
-
-fn bar(width: usize, percentage: u8) -> String {
+fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
     let filled = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
-    let fill = "#".repeat(filled);
-    let empty = ".".repeat(width - 2 - filled);
+    let fill = theme
+        .char_bar_filled
+        .to_string()
+        .repeat(filled)
+        .color(theme.color_usage_low.unwrap_or(Color::White));
+    let empty = theme
+        .char_bar_empty
+        .to_string()
+        .repeat(width - 2 - filled)
+        .color(theme.color_usage_low.unwrap_or(Color::White));
     format!("[{}{}]", fill, empty)
 }
 
 fn run() -> Result<()> {
+    let theme = Theme::new();
     let f = File::open("/proc/self/mounts")?;
     let _accept_minimal = vec!["/dev*"];
     let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
@@ -118,44 +60,8 @@ fn run() -> Result<()> {
             Err(_) => Option::None,
         };
         mnt.statfs = stat_opt;
-    }
 
-    let label_fsname = "FILESYSTEM";
-    let label_type = "TYPE";
-    let label_bar = "";
-    let label_used = "%USED";
-    let label_available = "AVAILABLE";
-    let label_total = "TOTAL";
-    let label_mounted = "MOUNTED ON";
-
-    let fsname_width = mnts
-        .iter()
-        .map(|m| m.mnt_fsname.len())
-        .chain(std::iter::once(label_fsname.len()))
-        .max()
-        .unwrap_or(label_fsname.len());
-    let type_width = mnts
-        .iter()
-        .map(|m| m.mnt_type.len())
-        .chain(std::iter::once(label_type.len()))
-        .max()
-        .unwrap_or(label_type.len());
-
-    println!(
-        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>10} {:>9} {}",
-        label_fsname,
-        label_type,
-        label_bar,
-        label_used,
-        label_available,
-        label_total,
-        label_mounted,
-        fsname_width = fsname_width,
-        type_width = type_width,
-        bar_width = bar_width
-    );
-    for mnt in mnts {
-        let (total, available) = match mnt.statfs {
+        let (size, available) = match mnt.statfs {
             Some(stat) => (
                 stat.f_blocks * (stat.f_frsize as u64),
                 stat.f_bavail * (stat.f_frsize as u64),
@@ -163,18 +69,93 @@ fn run() -> Result<()> {
             None => (0, 0),
         };
 
-        let used_percentage = 100.0 - available as f32 * 100.0 / total as f32;
+        mnt.used_percentage = 100.0 - available as f32 * 100.0 / size as f32;
+        mnt.used = format!("{}", (size - available) / 1024 / 1);
+        mnt.available = format!("{}", available / 1024 / 1);
+        mnt.size = format!("{}", size / 1024 / 1);
+    }
+
+    let label_fsname = "Filesystem";
+    let label_type = "Type";
+    let label_bar = "";
+    let label_used_percentage = "Used%";
+    let label_used = "Used";
+    let label_available = "Avail";
+    let label_size = "Size";
+    let label_mounted = "Mounted on";
+
+    let fsname_width = mnts
+        .iter()
+        .map(|m| m.mnt_fsname.len())
+        .chain(std::iter::once(label_fsname.len()))
+        .max()
+        .unwrap_or(label_fsname.len());
+
+    let type_width = mnts
+        .iter()
+        .map(|m| m.mnt_type.len())
+        .chain(std::iter::once(label_type.len()))
+        .max()
+        .unwrap_or(label_type.len());
+
+    let used_width = mnts
+        .iter()
+        .map(|m| m.used.len())
+        .chain(std::iter::once(label_used.len()))
+        .max()
+        .unwrap_or(label_used.len());
+
+    let available_width = mnts
+        .iter()
+        .map(|m| m.available.len())
+        .chain(std::iter::once(label_available.len()))
+        .max()
+        .unwrap_or(label_available.len());
+
+    let size_width = mnts
+        .iter()
+        .map(|m| m.size.len())
+        .chain(std::iter::once(label_size.len()))
+        .max()
+        .unwrap_or(label_size.len());
+
+    println!(
+        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>size_width$} {}",
+        label_fsname.color(theme.color_headline.unwrap_or(Color::White)),
+        label_type.color(theme.color_headline.unwrap_or(Color::White)),
+        label_bar.color(theme.color_headline.unwrap_or(Color::White)),
+        label_used_percentage.color(theme.color_headline.unwrap_or(Color::White)),
+        label_used.color(theme.color_headline.unwrap_or(Color::White)),
+        label_available.color(theme.color_headline.unwrap_or(Color::White)),
+        label_size.color(theme.color_headline.unwrap_or(Color::White)),
+        label_mounted.color(theme.color_headline.unwrap_or(Color::White)),
+        fsname_width = fsname_width,
+        type_width = type_width,
+        bar_width = bar_width,
+        used_width = used_width,
+        available_width = available_width,
+        size_width = size_width,
+    );
+    for mnt in mnts {
         println!(
-            "{:<fsname_width$} {:<type_width$} {} {:>5.1}% {:>10} {:>9} {}",
+            "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            bar(bar_width, used_percentage.ceil() as u8),
-            (used_percentage * 10.0).round() / 10.0,
-            available / 1024 / 1,
-            total / 1024 / 1,
+            bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
+            format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0)
+                .color(theme.color_usage_low.unwrap_or(Color::White)),
+            mnt.used
+                .color(theme.color_usage_low.unwrap_or(Color::White)),
+            mnt.available
+                .color(theme.color_usage_low.unwrap_or(Color::White)),
+            mnt.size
+                .color(theme.color_usage_low.unwrap_or(Color::White)),
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width,
+            used_width = used_width,
+            available_width = available_width,
+            size_width = size_width,
         );
     }
 
