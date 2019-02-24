@@ -17,14 +17,14 @@ mod mount;
 use mount::*;
 
 fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
-    let fill_len_total = (percentage as f32 / 100.0 * (width - 2) as f32).ceil() as usize;
+    let fill_len_total = (percentage as f32 / 100.0 * width as f32).ceil() as usize;
     let fill_len_low = std::cmp::min(
         fill_len_total,
-        ((width - 2) as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
+        (width as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
     );
     let fill_len_medium = std::cmp::min(
         fill_len_total,
-        ((width - 2) as f32 * theme.threshold_usage_high / 100.0).ceil() as usize,
+        (width as f32 * theme.threshold_usage_high / 100.0).ceil() as usize,
     ) - fill_len_low;
     let fill_len_high = fill_len_total - fill_len_low - fill_len_medium;
 
@@ -46,7 +46,7 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
     let empty = theme
         .char_bar_empty
         .to_string()
-        .repeat(width - 2 - fill_len_total)
+        .repeat(width - fill_len_total)
         .color(theme.color_usage_low.unwrap_or(Color::White));
 
     format!(
@@ -72,7 +72,7 @@ fn run() -> Result<()> {
     let _accept_all = vec!["*"];
     let mounts_to_show = _accept_all;
 
-    let bar_width = 22;
+    let bar_width = 20;
 
     let mnts = get_mounts(f)?;
     let mut mnts = mnts

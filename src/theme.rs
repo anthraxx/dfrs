@@ -3,8 +3,8 @@ use colored::*;
 pub struct Theme {
     pub char_bar_filled: char,
     pub char_bar_empty: char,
-    pub char_bar_open: char,
-    pub char_bar_close: char,
+    pub char_bar_open: String,
+    pub char_bar_close: String,
     pub threshold_usage_medium: f32,
     pub threshold_usage_high: f32,
     pub color_headline: Option<Color>,
@@ -18,8 +18,8 @@ impl Theme {
         Theme {
             char_bar_filled: named_char::HEAVY_BOX,
             char_bar_empty: named_char::HEAVY_DOUBLE_DASH,
-            char_bar_open: named_char::SPACE,
-            char_bar_close: named_char::SPACE,
+            char_bar_open: "".to_string(),
+            char_bar_close: "".to_string(),
             threshold_usage_medium: 50.0,
             threshold_usage_high: 75.0,
             color_headline: Some(Color::Blue),
