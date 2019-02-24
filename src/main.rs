@@ -1,5 +1,6 @@
 extern crate failure;
 
+use std::cmp;
 use std::fs::File;
 use std::mem;
 
@@ -15,6 +16,21 @@ use theme::Theme;
 
 mod mount;
 use mount::*;
+
+pub fn convert_bytes(num: f64) -> String {
+    let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
+    if num < 1_f64 {
+        return format!("{}{}", num, units[0]);
+    }
+    let delimiter = 1024_f64;
+    let exponent = cmp::min(
+        (num.ln() / delimiter.ln()).floor() as i32,
+        (units.len() - 1) as i32,
+    );
+    let pretty_bytes = format!("{:.*}", 1, num / delimiter.powi(exponent));
+    let unit = units[exponent as usize];
+    format!("{}{}", pretty_bytes, unit)
+}
 
 fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
     let fill_len_total = (percentage as f32 / 100.0 * width as f32).ceil() as usize;
@@ -105,9 +121,9 @@ fn run() -> Result<()> {
         };
 
         mnt.used_percentage = 100.0 - available as f32 * 100.0 / std::cmp::max(size, 1) as f32;
-        mnt.used = format!("{}", (size - available) / 1024 / 1);
-        mnt.available = format!("{}", available / 1024 / 1);
-        mnt.size = format!("{}", size / 1024 / 1);
+        mnt.used = convert_bytes((size - available) as f64);
+        mnt.available = convert_bytes(available as f64);
+        mnt.size = convert_bytes(size as f64);
     }
 
     let label_fsname = "Filesystem";
