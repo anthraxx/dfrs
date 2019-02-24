@@ -126,6 +126,8 @@ fn run() -> Result<()> {
         mnt.size = convert_bytes(size as f64);
     }
 
+    let color_heading = theme.color_heading.unwrap_or(Color::White);
+
     let label_fsname = "Filesystem";
     let label_type = "Type";
     let label_bar = "";
@@ -143,14 +145,14 @@ fn run() -> Result<()> {
 
     println!(
         "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>size_width$} {}",
-        label_fsname.color(theme.color_headline.unwrap_or(Color::White)),
-        label_type.color(theme.color_headline.unwrap_or(Color::White)),
-        label_bar.color(theme.color_headline.unwrap_or(Color::White)),
-        label_used_percentage.color(theme.color_headline.unwrap_or(Color::White)),
-        label_used.color(theme.color_headline.unwrap_or(Color::White)),
-        label_available.color(theme.color_headline.unwrap_or(Color::White)),
-        label_size.color(theme.color_headline.unwrap_or(Color::White)),
-        label_mounted.color(theme.color_headline.unwrap_or(Color::White)),
+        label_fsname.color(color_heading),
+        label_type.color(color_heading),
+        label_bar.color(color_heading),
+        label_used_percentage.color(color_heading),
+        label_used.color(color_heading),
+        label_available.color(color_heading),
+        label_size.color(color_heading),
+        label_mounted.color(color_heading),
         fsname_width = fsname_width,
         type_width = type_width,
         bar_width = bar_width,
@@ -163,20 +165,17 @@ fn run() -> Result<()> {
             p if p >= theme.threshold_usage_high => theme.color_usage_high,
             p if p >= theme.threshold_usage_medium => theme.color_usage_medium,
             _ => theme.color_usage_low,
-        };
+        }
+        .unwrap_or(Color::White);
         println!(
             "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
-            format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0)
-                .color(color_usage.unwrap_or(Color::White)),
-            mnt.used
-                .color(color_usage.unwrap_or(Color::White)),
-            mnt.available
-                .color(color_usage.unwrap_or(Color::White)),
-            mnt.size
-                .color(color_usage.unwrap_or(Color::White)),
+            format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0).color(color_usage),
+            mnt.used.color(color_usage),
+            mnt.available.color(color_usage),
+            mnt.size.color(color_usage),
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width,
