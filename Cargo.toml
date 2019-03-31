@@ -3,6 +3,8 @@ name = "dfrs"
 version = "0.0.1"
 authors = ["anthraxx <levente@leventepolyak.net>"]
 edition = "2018"
+license = "MIT"
+license-file = "LICENSE"
 
 [dependencies]
 nix = "0.13.0"
