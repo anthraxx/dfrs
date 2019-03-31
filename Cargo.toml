@@ -1,6 +1,7 @@
 [package]
 name = "dfrs"
 version = "0.0.1"
+description = "Display file system space usage using graphs and colors"
 authors = ["anthraxx <levente@leventepolyak.net>"]
 edition = "2018"
 license = "MIT"
