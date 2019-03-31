@@ -50,7 +50,7 @@ dependencies = [
 
 [[package]]
 name = "dfrs"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "colored 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
