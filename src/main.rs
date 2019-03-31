@@ -86,7 +86,7 @@ fn run() -> Result<()> {
     let _accept_minimal = vec!["/dev*"];
     let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
     let _accept_all = vec!["*"];
-    let mounts_to_show = _accept_all;
+    let mounts_to_show = _accept_more;
 
     let bar_width = 20;
 
