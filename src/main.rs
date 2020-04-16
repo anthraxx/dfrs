@@ -2,7 +2,6 @@ extern crate failure;
 
 use std::cmp;
 use std::fs::File;
-use std::mem;
 
 use nix::sys::statfs;
 
@@ -72,7 +71,7 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
 }
 
 #[inline]
-fn column_width(mnt: &Vec<MountEntry>, f: &Fn(&MountEntry) -> usize, heading: &str) -> usize {
+fn column_width(mnt: &Vec<MountEntry>, f: &dyn Fn(&MountEntry) -> usize, heading: &str) -> usize {
     mnt.iter()
         .map(f)
         .chain(std::iter::once(heading.len()))
@@ -98,24 +97,23 @@ fn run() -> Result<()> {
                 if x.ends_with("*") {
                     m.mnt_fsname.starts_with(&x[..x.len() - 1])
                 } else {
-                    m.mnt_fsname == x
+                    m.mnt_fsname == x.to_string()
                 }
             })
         })
         .collect::<Vec<_>>();
 
     for mnt in &mut mnts {
-        let mut stat = unsafe { mem::uninitialized() };
-        let stat_opt = match statfs::statfs(&mnt.mnt_dir[..], &mut stat) {
-            Ok(_) => Option::Some(stat),
+        let stat_opt = match statfs::statfs(&mnt.mnt_dir[..]) {
+            Ok(stat) => Option::Some(stat),
             Err(_) => Option::None,
         };
         mnt.statfs = stat_opt;
 
         let (size, available) = match mnt.statfs {
             Some(stat) => (
-                stat.f_blocks * (stat.f_frsize as u64),
-                stat.f_bavail * (stat.f_frsize as u64),
+                stat.blocks() * (stat.block_size() as u64),
+                stat.blocks_available() * (stat.block_size() as u64),
             ),
             None => (0, 0),
         };

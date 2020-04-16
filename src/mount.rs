@@ -17,7 +17,7 @@ pub struct MountEntry {
     pub used: String,
     pub available: String,
     pub size: String,
-    pub statfs: Option<libc::statfs>,
+    pub statfs: Option<nix::sys::statfs::Statfs>,
 }
 
 impl MountEntry {

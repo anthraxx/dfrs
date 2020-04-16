@@ -4,12 +4,11 @@ version = "0.0.1"
 description = "Display file system space usage using graphs and colors"
 authors = ["anthraxx <levente@leventepolyak.net>"]
 edition = "2018"
-license = "MIT"
 license-file = "LICENSE"
 
 [dependencies]
-nix = "0.13.0"
-libc = "0.2.48"
-failure = "0.1.5"
-colored = "1.7.0"
+nix = "0.17.0"
+libc = "0.2.69"
+failure = "0.1.7"
+colored = "1.9.3"
 # termcolor = "1.0.4"
