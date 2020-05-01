@@ -100,16 +100,24 @@ fn run(args: Args) -> Result<()> {
             },
         }
     });
+    if args.color_always {
+        debug!("Bypass tty detection for colors: always");
+        colored::control::set_override(true);
+    }
 
     match args.subcommand {
         Some(SubCommand::Completions(completions)) => args::gen_completions(&completions)?,
         _ => {
             let theme = Theme::new();
             let f = File::open("/proc/self/mounts")?;
-            let _accept_minimal = vec!["/dev*"];
-            let _accept_more = vec!["dev", "run", "tmpfs", "/dev*"];
-            let _accept_all = vec!["*"];
-            let mounts_to_show = _accept_more;
+
+            let mut mounts_to_show = DisplayFilter::from_u8(args.display);
+            if args.more {
+                mounts_to_show = DisplayFilter::More;
+            }
+            if args.all {
+                mounts_to_show = DisplayFilter::All;
+            }
 
             let bar_width = 20;
 
@@ -117,7 +125,7 @@ fn run(args: Args) -> Result<()> {
             let mut mnts = mnts
                 .into_iter()
                 .filter(|m| {
-                    mounts_to_show.iter().any(|&x| {
+                    mounts_to_show.get_mnt_fsname_filter().iter().any(|&x| {
                         if x.ends_with("*") {
                             m.mnt_fsname.starts_with(&x[..x.len() - 1])
                         } else {

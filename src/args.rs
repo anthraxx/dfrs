@@ -10,9 +10,21 @@ use strum_macros::EnumString;
 #[derive(Debug, StructOpt)]
 #[structopt(global_settings = &[AppSettings::ColoredHelp])]
 pub struct Args {
+    /// show more
+    #[structopt(short="a", group="display_group", parse(from_occurrences))]
+    pub display: u8,
+    /// Show more
+    #[structopt(long, group="display_group")]
+    pub more: bool,
+    /// Show all
+    #[structopt(long, group="display_group")]
+    pub all: bool,
     /// Bypass tty detection for colors: auto, always, never
-    #[structopt(long)]
+    #[structopt(long, group="color_group")]
     pub color: Option<ColorOpt>,
+    /// Bypass tty detection for colors: auto, always, never
+    #[structopt(short="c", group="color_group")]
+    pub color_always: bool,
     /// Verbose logging
     #[structopt(short)]
     pub verbose: bool,
@@ -33,6 +45,32 @@ pub enum ColorOpt {
     Auto,
     Always,
     Never
+}
+
+#[derive(Debug, StructOpt, EnumString)]
+#[strum(serialize_all = "lowercase")]
+pub enum DisplayFilter {
+    Minimal,
+    More,
+    All,
+}
+
+impl DisplayFilter {
+    pub fn from_u8(n: u8) -> DisplayFilter {
+        match n {
+            0 => DisplayFilter::Minimal,
+            1 => DisplayFilter::More,
+            _ => DisplayFilter::All
+        }
+    }
+
+    pub fn get_mnt_fsname_filter(&self) -> Vec<&'static str> {
+        match self {
+            DisplayFilter::Minimal => vec!["/dev*"],
+            DisplayFilter::More => vec!["dev", "run", "tmpfs", "/dev*"],
+            DisplayFilter::All => vec!["*"],
+        }
+    }
 }
 
 #[derive(Debug, StructOpt)]
