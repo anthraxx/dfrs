@@ -1,6 +1,8 @@
 extern crate failure;
+extern crate strum;
+extern crate strum_macros;
 
-use crate::args::*;
+use args::*;
 mod args;
 
 mod errors;
@@ -86,10 +88,18 @@ fn column_width(mnt: &Vec<MountEntry>, f: &dyn Fn(&MountEntry) -> usize, heading
 }
 
 fn run(args: Args) -> Result<()> {
-    if args.color {
-        debug!("Bypass tty detection and always use colors");
-        colored::control::set_override(true);
-    }
+    args.color.map(|color| {
+        debug!("Bypass tty detection for colors: {:?}", color);
+        match color {
+            ColorOpt::Auto => {},
+            ColorOpt::Always => {
+                colored::control::set_override(true);
+            },
+            ColorOpt::Never => {
+                colored::control::set_override(false);
+            },
+        }
+    });
 
     match args.subcommand {
         Some(SubCommand::Completions(completions)) => args::gen_completions(&completions)?,
