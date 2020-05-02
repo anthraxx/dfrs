@@ -8,7 +8,7 @@ use std::io::stdout;
 use strum_macros::EnumString;
 
 #[derive(Debug, StructOpt)]
-#[structopt(global_settings = &[AppSettings::ColoredHelp])]
+#[structopt(global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
 pub struct Args {
     /// show more
     #[structopt(short="a", group="display_group", parse(from_occurrences))]
