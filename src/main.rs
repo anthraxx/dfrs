@@ -24,12 +24,11 @@ use env_logger::Env;
 use colored::*;
 use structopt::StructOpt;
 
-pub fn convert_bytes(num: f64) -> String {
+pub fn format_count(num: f64, delimiter: f64) -> String {
     let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
     if num < 1_f64 {
         return format!("{}{}", num, units[0]);
     }
-    let delimiter = 1024_f64;
     let exponent = cmp::min(
         (num.ln() / delimiter.ln()).floor() as i32,
         (units.len() - 1) as i32,
@@ -110,6 +109,7 @@ fn run(args: Args) -> Result<()> {
         _ => {
             let theme = Theme::new();
             let f = File::open("/proc/self/mounts")?;
+            let delimiter = if args.base10 { NumberFormat::Base10 } else { NumberFormat::Base2 };
 
             let mut mounts_to_show = DisplayFilter::from_u8(args.display);
             if args.more {
@@ -156,9 +156,9 @@ fn run(args: Args) -> Result<()> {
                     None => (0, 0),
                 };
 
-                mnt.capacity = convert_bytes(capacity as f64);
-                mnt.free = convert_bytes(free as f64);
-                mnt.used = convert_bytes((capacity - free) as f64);
+                mnt.capacity = format_count(capacity as f64, delimiter.get_powers_of());
+                mnt.free = format_count(free as f64, delimiter.get_powers_of());
+                mnt.used = format_count((capacity - free) as f64, delimiter.get_powers_of());
                 mnt.used_percentage = 100.0 - free as f32 * 100.0 / std::cmp::max(capacity, 1) as f32;
             }
 

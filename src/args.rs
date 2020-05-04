@@ -22,12 +22,18 @@ pub struct Args {
     /// Bypass tty detection for colors: auto, always, never
     #[structopt(long, group="color_group")]
     pub color: Option<ColorOpt>,
-    /// Bypass tty detection for colors: auto, always, never
+    /// Bypass tty detection and always show colors
     #[structopt(short="c", group="color_group")]
     pub color_always: bool,
     /// Show inode instead of block usage
     #[structopt(short, long)]
     pub inodes: bool,
+    /// Print sizes in powers of 1024 (e.g., 1023M)
+    #[structopt(short="h", long="human-readable", group="number_format")]
+    pub base2: bool,
+    /// Print sizes in powers of 1000 (e.g., 1.1G)
+    #[structopt(short="H", long="si", group="number_format")]
+    pub base10: bool,
     /// Verbose logging
     #[structopt(short)]
     pub verbose: bool,
@@ -72,6 +78,21 @@ impl DisplayFilter {
             DisplayFilter::Minimal => vec!["/dev*"],
             DisplayFilter::More => vec!["dev", "run", "tmpfs", "/dev*"],
             DisplayFilter::All => vec!["*"],
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+pub enum NumberFormat {
+    Base10,
+    Base2,
+}
+
+impl NumberFormat {
+    pub fn get_powers_of(&self) -> f64 {
+        match self {
+            NumberFormat::Base10 => 1000_f64,
+            NumberFormat::Base2 => 1024_f64,
         }
     }
 }
