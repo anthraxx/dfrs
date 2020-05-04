@@ -142,18 +142,24 @@ fn run(args: Args) -> Result<()> {
                 };
                 mnt.statfs = stat_opt;
 
-                let (size, available) = match mnt.statfs {
-                    Some(stat) => (
-                        stat.blocks() * (stat.block_size() as u64),
-                        stat.blocks_available() * (stat.block_size() as u64),
-                    ),
+                let (capacity, free) = match mnt.statfs {
+                    Some(stat) => {
+                        if args.inodes {
+                            (stat.files(), stat.files_free())
+                        } else {
+                            (
+                                stat.blocks() * (stat.block_size() as u64),
+                                stat.blocks_available() * (stat.block_size() as u64)
+                            )
+                        }
+                    },
                     None => (0, 0),
                 };
 
-                mnt.used_percentage = 100.0 - available as f32 * 100.0 / std::cmp::max(size, 1) as f32;
-                mnt.used = convert_bytes((size - available) as f64);
-                mnt.available = convert_bytes(available as f64);
-                mnt.size = convert_bytes(size as f64);
+                mnt.capacity = convert_bytes(capacity as f64);
+                mnt.free = convert_bytes(free as f64);
+                mnt.used = convert_bytes((capacity - free) as f64);
+                mnt.used_percentage = 100.0 - free as f32 * 100.0 / std::cmp::max(capacity, 1) as f32;
             }
 
             let color_heading = theme.color_heading.unwrap_or(Color::White);
@@ -164,31 +170,31 @@ fn run(args: Args) -> Result<()> {
             let label_used_percentage = "Used%";
             let label_used = "Used";
             let label_available = "Avail";
-            let label_size = "Size";
+            let label_capacity = if args.inodes { "Inodes" } else { "Size" };
             let label_mounted = "Mounted on";
 
             let fsname_width = column_width(&mnts, &|m: &MountEntry| m.mnt_fsname.len(), label_fsname);
             let type_width = column_width(&mnts, &|m: &MountEntry| m.mnt_type.len(), label_type);
             let used_width = column_width(&mnts, &|m: &MountEntry| m.used.len(), label_used);
-            let available_width = column_width(&mnts, &|m: &MountEntry| m.available.len(), label_available);
-            let size_width = column_width(&mnts, &|m: &MountEntry| m.size.len(), label_size);
+            let available_width = column_width(&mnts, &|m: &MountEntry| m.free.len(), label_available);
+            let capacity_width = column_width(&mnts, &|m: &MountEntry| m.capacity.len(), label_capacity);
 
             println!(
-                "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>size_width$} {}",
+                "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
                 label_fsname.color(color_heading),
                 label_type.color(color_heading),
                 label_bar.color(color_heading),
                 label_used_percentage.color(color_heading),
                 label_used.color(color_heading),
                 label_available.color(color_heading),
-                label_size.color(color_heading),
+                label_capacity.color(color_heading),
                 label_mounted.color(color_heading),
                 fsname_width = fsname_width,
                 type_width = type_width,
                 bar_width = bar_width,
                 used_width = used_width,
                 available_width = available_width,
-                size_width = size_width,
+                capacity_width = capacity_width,
             );
             for mnt in mnts {
                 let color_usage = match mnt.used_percentage {
@@ -204,14 +210,14 @@ fn run(args: Args) -> Result<()> {
                     bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
                     format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0).color(color_usage),
                     mnt.used.color(color_usage),
-                    mnt.available.color(color_usage),
-                    mnt.size.color(color_usage),
+                    mnt.free.color(color_usage),
+                    mnt.capacity.color(color_usage),
                     mnt.mnt_dir,
                     fsname_width = fsname_width,
                     type_width = type_width,
                     used_width = used_width,
                     available_width = available_width,
-                    size_width = size_width,
+                    size_width = capacity_width,
                 );
             }
         }

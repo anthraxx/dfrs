@@ -13,10 +13,10 @@ pub struct MountEntry {
     pub mnt_opts: String,
     pub mnt_freq: i32,
     pub mnt_passno: i32,
+    pub capacity: String,
+    pub free: String,
     pub used_percentage: f32,
     pub used: String,
-    pub available: String,
-    pub size: String,
     pub statfs: Option<nix::sys::statfs::Statfs>,
 }
 
@@ -36,10 +36,10 @@ impl MountEntry {
             mnt_opts,
             mnt_freq,
             mnt_passno,
-            used_percentage: 0.0,
+            capacity: "".to_string(),
+            free: "".to_string(),
             used: "".to_string(),
-            available: "".to_string(),
-            size: "".to_string(),
+            used_percentage: 0.0,
             statfs: Option::None,
         }
     }

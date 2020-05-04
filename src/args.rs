@@ -10,7 +10,7 @@ use strum_macros::EnumString;
 #[derive(Debug, StructOpt)]
 #[structopt(global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
 pub struct Args {
-    /// show more
+    /// Show more, use twice to show all
     #[structopt(short="a", group="display_group", parse(from_occurrences))]
     pub display: u8,
     /// Show more
@@ -25,6 +25,9 @@ pub struct Args {
     /// Bypass tty detection for colors: auto, always, never
     #[structopt(short="c", group="color_group")]
     pub color_always: bool,
+    /// Show inode instead of block usage
+    #[structopt(short, long)]
+    pub inodes: bool,
     /// Verbose logging
     #[structopt(short)]
     pub verbose: bool,
