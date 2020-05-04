@@ -1,4 +1,4 @@
-extern crate failure;
+extern crate anyhow;
 extern crate strum;
 extern crate strum_macros;
 
@@ -240,7 +240,7 @@ fn main() {
 
     if let Err(err) = run(args) {
         eprintln!("Error: {}", err);
-        for cause in err.iter_chain().skip(1) {
+        for cause in err.chain().skip(1) {
             eprintln!("Because: {}", cause);
         }
         std::process::exit(1);

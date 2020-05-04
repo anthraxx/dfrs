@@ -1,10 +1,8 @@
-use failure::*;
+use crate::errors::*;
 
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-
-use crate::errors::*;
 
 pub struct MountEntry {
     pub mnt_fsname: String,
@@ -50,27 +48,27 @@ fn parse_mount_line(line: &str) -> Result<MountEntry> {
     Ok(MountEntry::new(
         mnt_a
             .next()
-            .ok_or_else(|| format_err!("Missing value fsname"))?
+            .ok_or_else(|| anyhow!("Missing value fsname"))?
             .into(),
         mnt_a
             .next()
-            .ok_or_else(|| format_err!("Missing value dir"))?
+            .ok_or_else(|| anyhow!("Missing value dir"))?
             .into(),
         mnt_a
             .next()
-            .ok_or_else(|| format_err!("Missing value type"))?
+            .ok_or_else(|| anyhow!("Missing value type"))?
             .into(),
         mnt_a
             .next()
-            .ok_or_else(|| format_err!("Missing value opts"))?
+            .ok_or_else(|| anyhow!("Missing value opts"))?
             .into(),
         mnt_a
             .next()
-            .ok_or_else(|| format_err!("Missing value freq"))?
+            .ok_or_else(|| anyhow!("Missing value freq"))?
             .parse::<i32>()?,
         mnt_a
             .next()
-            .ok_or_else(|| format_err!("Missing value passno"))?
+            .ok_or_else(|| anyhow!("Missing value passno"))?
             .parse::<i32>()?,
     ))
 }
