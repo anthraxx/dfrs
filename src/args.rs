@@ -8,7 +8,7 @@ use std::io::stdout;
 use strum_macros::EnumString;
 
 #[derive(Debug, StructOpt)]
-#[structopt(global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
+#[structopt(about="Display file system space usage using graphs and colors.", global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
 pub struct Args {
     /// Show more, use twice to show all
     #[structopt(short="a", group="display_group", parse(from_occurrences))]
