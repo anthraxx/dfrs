@@ -1,11 +1,11 @@
-use crate::errors::*;
-
 use structopt::StructOpt;
 use structopt::clap::{AppSettings, Shell};
 
 use std::io::stdout;
 
 use strum_macros::EnumString;
+use std::path::PathBuf;
+use anyhow::Result;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about="Display file system space usage using graphs and colors.", global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
@@ -37,6 +37,8 @@ pub struct Args {
     /// Verbose logging
     #[structopt(short)]
     pub verbose: bool,
+    #[structopt(parse(from_os_str))]
+    pub paths: Vec<PathBuf>,
     #[structopt(subcommand)]
     pub subcommand: Option<SubCommand>,
 }

@@ -23,6 +23,7 @@ use env_logger::Env;
 
 use colored::*;
 use structopt::StructOpt;
+use anyhow::Result;
 
 pub fn format_count(num: f64, delimiter: f64) -> String {
     let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
@@ -78,12 +79,73 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
 }
 
 #[inline]
-fn column_width(mnt: &Vec<MountEntry>, f: &dyn Fn(&MountEntry) -> usize, heading: &str) -> usize {
+fn column_width(mnt: &[&MountEntry], f: &dyn Fn(&&MountEntry) -> usize, heading: &str) -> usize {
     mnt.iter()
         .map(f)
         .chain(std::iter::once(heading.len()))
         .max()
         .unwrap()
+}
+
+fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) -> () {
+    let bar_width = 20;
+    let color_heading = theme.color_heading.unwrap_or(Color::White);
+
+    let label_fsname = "Filesystem";
+    let label_type = "Type";
+    let label_bar = "";
+    let label_used_percentage = "Used%";
+    let label_used = "Used";
+    let label_available = "Avail";
+    let label_capacity = if inodes_mode { "Inodes" } else { "Size" };
+    let label_mounted = "Mounted on";
+
+    let fsname_width = column_width(&mnts, &|m: &&MountEntry| m.mnt_fsname.len(), label_fsname);
+    let type_width = column_width(&mnts, &|m: &&MountEntry| m.mnt_type.len(), label_type);
+    let used_width = column_width(&mnts, &|m: &&MountEntry| m.used.len(), label_used);
+    let available_width = column_width(&mnts, &|m: &&MountEntry| m.free.len(), label_available);
+    let capacity_width = column_width(&mnts, &|m: &&MountEntry| m.capacity.len(), label_capacity);
+
+    println!(
+        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
+        label_fsname.color(color_heading),
+        label_type.color(color_heading),
+        label_bar.color(color_heading),
+        label_used_percentage.color(color_heading),
+        label_used.color(color_heading),
+        label_available.color(color_heading),
+        label_capacity.color(color_heading),
+        label_mounted.color(color_heading),
+        fsname_width = fsname_width,
+        type_width = type_width,
+        bar_width = bar_width,
+        used_width = used_width,
+        available_width = available_width,
+        capacity_width = capacity_width,
+    );
+    for mnt in mnts {
+        let color_usage = match mnt.used_percentage {
+            p if p >= theme.threshold_usage_high => theme.color_usage_high,
+            p if p >= theme.threshold_usage_medium => theme.color_usage_medium,
+            _ => theme.color_usage_low,
+        }.unwrap_or(Color::White);
+        println!(
+            "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
+            mnt.mnt_fsname,
+            mnt.mnt_type,
+            bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
+            format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0).color(color_usage),
+            mnt.used.color(color_usage),
+            mnt.free.color(color_usage),
+            mnt.capacity.color(color_usage),
+            mnt.mnt_dir,
+            fsname_width = fsname_width,
+            type_width = type_width,
+            used_width = used_width,
+            available_width = available_width,
+            size_width = capacity_width,
+        );
+    }
 }
 
 fn run(args: Args) -> Result<()> {
@@ -119,10 +181,8 @@ fn run(args: Args) -> Result<()> {
                 mounts_to_show = DisplayFilter::All;
             }
 
-            let bar_width = 20;
-
             let mnts = get_mounts(f)?;
-            let mut mnts = mnts
+            let mut mnts:Vec<MountEntry> = mnts
                 .into_iter()
                 .filter(|m| {
                     mounts_to_show.get_mnt_fsname_filter().iter().any(|&x| {
@@ -136,11 +196,7 @@ fn run(args: Args) -> Result<()> {
                 .collect::<Vec<_>>();
 
             for mnt in &mut mnts {
-                let stat_opt = match statfs::statfs(&mnt.mnt_dir[..]) {
-                    Ok(stat) => Option::Some(stat),
-                    Err(_) => Option::None,
-                };
-                mnt.statfs = stat_opt;
+                mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();
 
                 let (capacity, free) = match mnt.statfs {
                     Some(stat) => {
@@ -162,63 +218,22 @@ fn run(args: Args) -> Result<()> {
                 mnt.used_percentage = 100.0 - free as f32 * 100.0 / std::cmp::max(capacity, 1) as f32;
             }
 
-            let color_heading = theme.color_heading.unwrap_or(Color::White);
+            if args.paths.is_empty() {
+                let mnts: &[&MountEntry] = &mnts.iter().collect::<Vec<_>>();
+                display_mounts(&mnts, &theme, args.inodes);
+            } else {
+                let mnts: &[&MountEntry] = &args.paths.iter().filter_map(|path| {
+                    path.canonicalize().map_err(|error|
+                        eprintln!("dfrs: {}: {}", path.clone().into_os_string().to_string_lossy(), error)
+                    ).ok()
+                }).map(|path| {
+                    debug!("{:?}", path);
+                    mnts.iter().map(|mnt| {
+                        (if path.starts_with(&mnt.mnt_dir) { mnt.mnt_dir.len() } else { 0 }, mnt)
+                    }).max_by_key(|x| x.0).map(|x| x.1)
+                }).filter_map(|opt| opt).collect::<Vec<_>>();
 
-            let label_fsname = "Filesystem";
-            let label_type = "Type";
-            let label_bar = "";
-            let label_used_percentage = "Used%";
-            let label_used = "Used";
-            let label_available = "Avail";
-            let label_capacity = if args.inodes { "Inodes" } else { "Size" };
-            let label_mounted = "Mounted on";
-
-            let fsname_width = column_width(&mnts, &|m: &MountEntry| m.mnt_fsname.len(), label_fsname);
-            let type_width = column_width(&mnts, &|m: &MountEntry| m.mnt_type.len(), label_type);
-            let used_width = column_width(&mnts, &|m: &MountEntry| m.used.len(), label_used);
-            let available_width = column_width(&mnts, &|m: &MountEntry| m.free.len(), label_available);
-            let capacity_width = column_width(&mnts, &|m: &MountEntry| m.capacity.len(), label_capacity);
-
-            println!(
-                "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
-                label_fsname.color(color_heading),
-                label_type.color(color_heading),
-                label_bar.color(color_heading),
-                label_used_percentage.color(color_heading),
-                label_used.color(color_heading),
-                label_available.color(color_heading),
-                label_capacity.color(color_heading),
-                label_mounted.color(color_heading),
-                fsname_width = fsname_width,
-                type_width = type_width,
-                bar_width = bar_width,
-                used_width = used_width,
-                available_width = available_width,
-                capacity_width = capacity_width,
-            );
-            for mnt in mnts {
-                let color_usage = match mnt.used_percentage {
-                    p if p >= theme.threshold_usage_high => theme.color_usage_high,
-                    p if p >= theme.threshold_usage_medium => theme.color_usage_medium,
-                    _ => theme.color_usage_low,
-                }
-                    .unwrap_or(Color::White);
-                println!(
-                    "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
-                    mnt.mnt_fsname,
-                    mnt.mnt_type,
-                    bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
-                    format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0).color(color_usage),
-                    mnt.used.color(color_usage),
-                    mnt.free.color(color_usage),
-                    mnt.capacity.color(color_usage),
-                    mnt.mnt_dir,
-                    fsname_width = fsname_width,
-                    type_width = type_width,
-                    used_width = used_width,
-                    available_width = available_width,
-                    size_width = capacity_width,
-                );
+                display_mounts(&mnts, &theme, args.inodes);
             }
         }
     }

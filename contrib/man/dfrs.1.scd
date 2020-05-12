@@ -6,7 +6,7 @@ dfrs - Display file system space usage using graphs and colors
 
 # SYNOPSIS
 
-*dfrs* [_OPTION_]...
+*dfrs* [_OPTION_]...  [_FILE_]...
 
 # DESCRIPTION
 
@@ -18,7 +18,7 @@ Without any argument, size is displayed in human-readable format.
 
 # OPTIONS
 
-Show information about the file system on which each FILE resides, or all file systems by default.
+Show information about the file system on which each _FILE_ resides, or all regular file systems by default.
 
 *-a*, *--more*
 	Show more file systems; use *-a* twice to show all
