@@ -125,16 +125,17 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) -> () 
     );
     for mnt in mnts {
         let color_usage = match mnt.used_percentage {
-            p if p >= theme.threshold_usage_high => theme.color_usage_high,
-            p if p >= theme.threshold_usage_medium => theme.color_usage_medium,
+            Some(p) if p >= theme.threshold_usage_high => theme.color_usage_high,
+            Some(p) if p >= theme.threshold_usage_medium => theme.color_usage_medium,
             _ => theme.color_usage_low,
         }.unwrap_or(Color::White);
+        let used_percentage = mnt.used_percentage.unwrap_or(0.0);
         println!(
             "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            bar(bar_width, mnt.used_percentage.ceil() as u8, &theme),
-            format!("{:>5.1}", (mnt.used_percentage * 10.0).round() / 10.0).color(color_usage),
+            bar(bar_width, used_percentage.ceil() as u8, &theme),
+            format!("{:>5.1}", (used_percentage * 10.0).round() / 10.0).color(color_usage),
             mnt.used.color(color_usage),
             mnt.free.color(color_usage),
             mnt.capacity.color(color_usage),
@@ -215,7 +216,10 @@ fn run(args: Args) -> Result<()> {
                 mnt.capacity = format_count(capacity as f64, delimiter.get_powers_of());
                 mnt.free = format_count(free as f64, delimiter.get_powers_of());
                 mnt.used = format_count((capacity - free) as f64, delimiter.get_powers_of());
-                mnt.used_percentage = 100.0 - free as f32 * 100.0 / std::cmp::max(capacity, 1) as f32;
+
+                if capacity > 0 {
+                    mnt.used_percentage = Some(100.0 - free as f32 * 100.0 / capacity as f32);
+                }
             }
 
             if args.paths.is_empty() {
