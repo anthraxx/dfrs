@@ -28,7 +28,7 @@ dfrs:
 	$(CARGO) build $(CARGO_OPTIONS)
 
 test:
-	$(CARGO) test
+	$(CARGO) test $(CARGO_OPTIONS)
 
 docs: man completions
 
