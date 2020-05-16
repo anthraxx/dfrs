@@ -87,7 +87,7 @@ fn column_width(mnt: &[&MountEntry], f: &dyn Fn(&&MountEntry) -> usize, heading:
         .unwrap()
 }
 
-fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) -> () {
+fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
     let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
@@ -150,7 +150,7 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) -> () 
 }
 
 fn run(args: Args) -> Result<()> {
-    args.color.map(|color| {
+    if let Some(color) = args.color {
         debug!("Bypass tty detection for colors: {:?}", color);
         match color {
             ColorOpt::Auto => {},
@@ -161,7 +161,8 @@ fn run(args: Args) -> Result<()> {
                 colored::control::set_override(false);
             },
         }
-    });
+    }
+
     if args.color_always {
         debug!("Bypass tty detection for colors: always");
         colored::control::set_override(true);
@@ -174,23 +175,23 @@ fn run(args: Args) -> Result<()> {
             let f = File::open("/proc/self/mounts")?;
             let delimiter = if args.base10 { NumberFormat::Base10 } else { NumberFormat::Base2 };
 
-            let mut mounts_to_show = DisplayFilter::from_u8(args.display);
-            if args.more {
-                mounts_to_show = DisplayFilter::More;
-            }
-            if args.all {
-                mounts_to_show = DisplayFilter::All;
-            }
+            let mounts_to_show = if args.all {
+                DisplayFilter::All
+            } else if args.more {
+                DisplayFilter::More
+            } else {
+                DisplayFilter::from_u8(args.display)
+            };
 
             let mnts = get_mounts(f)?;
             let mut mnts:Vec<MountEntry> = mnts
                 .into_iter()
-                .filter(|m| {
-                    mounts_to_show.get_mnt_fsname_filter().iter().any(|&x| {
-                        if x.ends_with("*") {
-                            m.mnt_fsname.starts_with(&x[..x.len() - 1])
+                .filter(|mount| {
+                    mounts_to_show.get_mnt_fsname_filter().iter().any(|&fsname| {
+                        if fsname.ends_with('*') {
+                            mount.mnt_fsname.starts_with(&fsname[..fsname.len() - 1])
                         } else {
-                            m.mnt_fsname == x.to_string()
+                            mount.mnt_fsname == fsname
                         }
                     })
                 })
