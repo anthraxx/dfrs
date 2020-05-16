@@ -30,6 +30,18 @@ dfrs:
 test:
 	$(CARGO) test $(CARGO_OPTIONS)
 
+lint:
+	$(CARGO) clippy --all -- \
+		-D clippy::all \
+		-D clippy::pedantic \
+		-D clippy::restriction \
+		-D clippy::correctness \
+		-D clippy::complexity \
+		-D clippy::nursery \
+		-D clippy::perf \
+		-D clippy::cargo \
+		-D warnings
+
 docs: man completions
 
 man: contrib/man/dfrs.1
