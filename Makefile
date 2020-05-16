@@ -37,7 +37,7 @@ man: contrib/man/dfrs.1
 contrib/man/%: contrib/man/%.scd
 	$(SCDOC) < $^ > $@
 
-completions:
+completions: dfrs
 	target/$(CARGO_TARGET)/dfrs completions bash | $(INSTALL) -Dm 644 /dev/stdin target/completion/bash/dfrs
 	target/$(CARGO_TARGET)/dfrs completions zsh | $(INSTALL) -Dm 644 /dev/stdin target/completion/zsh/_dfrs
 	target/$(CARGO_TARGET)/dfrs completions fish | $(INSTALL) -Dm 644 /dev/stdin target/completion/fish/dfrs.fish
@@ -45,7 +45,7 @@ completions:
 clean:
 	$(RM) -rf target contrib/man/*.1
 
-install: docs
+install: dfrs docs
 	$(INSTALL) -Dm 755 target/$(CARGO_TARGET)/dfrs -t $(DESTDIR)$(BINDIR)
 	$(INSTALL) -Dm 644 contrib/man/*.1 -t $(DESTDIR)$(MANDIR)/man1
 	$(INSTALL) -Dm 644 target/completion/bash/dfrs -t $(DESTDIR)$(DATAROOTDIR)/bash-completion/completions
