@@ -31,6 +31,7 @@ test:
 	$(CARGO) test $(CARGO_OPTIONS)
 
 lint:
+	$(CARGO) check
 	$(CARGO) clippy --all -- \
 		-D clippy::all \
 		-D clippy::pedantic \
