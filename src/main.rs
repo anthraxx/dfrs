@@ -136,14 +136,17 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
             _ => theme.color_usage_void,
         }.unwrap_or(Color::White);
 
-        let used_percentage = mnt.used_percentage.unwrap_or(0.0);
+        let used_percentage = match mnt.used_percentage {
+            Some(percentage) => format!("{:>5.1}{}", (percentage * 10.0).round() / 10.0, "%".color(Color::White)),
+            None => format!("{:>6}", "-")
+        }.color(color_usage);
 
         println!(
-            "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
+            "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage, &theme),
-            format!("{:>5.1}", (used_percentage * 10.0).round() / 10.0).color(color_usage),
+            used_percentage,
             mnt.used.color(color_usage),
             mnt.free.color(color_usage),
             mnt.capacity.color(color_usage),
