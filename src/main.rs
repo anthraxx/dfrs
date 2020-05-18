@@ -107,9 +107,9 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
 
     let fsname_width = column_width(&mnts, &|m: &&MountEntry| m.mnt_fsname.len(), label_fsname);
     let type_width = column_width(&mnts, &|m: &&MountEntry| m.mnt_type.len(), label_type);
-    let used_width = column_width(&mnts, &|m: &&MountEntry| m.used.len(), label_used);
-    let available_width = column_width(&mnts, &|m: &&MountEntry| m.free.len(), label_available);
-    let capacity_width = column_width(&mnts, &|m: &&MountEntry| m.capacity.len(), label_capacity);
+    let used_width = column_width(&mnts, &|m: &&MountEntry| m.used_formatted.len(), label_used);
+    let available_width = column_width(&mnts, &|m: &&MountEntry| m.free_formatted.len(), label_available);
+    let capacity_width = column_width(&mnts, &|m: &&MountEntry| m.capacity_formatted.len(), label_capacity);
 
     println!(
         "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
@@ -147,9 +147,9 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage, &theme),
             used_percentage,
-            mnt.used.color(color_usage),
-            mnt.free.color(color_usage),
-            mnt.capacity.color(color_usage),
+            mnt.used_formatted.color(color_usage),
+            mnt.free_formatted.color(color_usage),
+            mnt.capacity_formatted.color(color_usage),
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width,
@@ -225,9 +225,13 @@ fn run(args: Args) -> Result<()> {
                     None => (0, 0),
                 };
 
-                mnt.capacity = format_count(capacity as f64, delimiter.get_powers_of());
-                mnt.free = format_count(free as f64, delimiter.get_powers_of());
-                mnt.used = format_count((capacity - free) as f64, delimiter.get_powers_of());
+                mnt.capacity = capacity;
+                mnt.free = free;
+                mnt.used = capacity - free;
+
+                mnt.capacity_formatted = format_count(mnt.capacity as f64, delimiter.get_powers_of());
+                mnt.free_formatted = format_count(mnt.free as f64, delimiter.get_powers_of());
+                mnt.used_formatted = format_count(mnt.used as f64, delimiter.get_powers_of());
 
                 if capacity > 0 {
                     mnt.used_percentage = Some(100.0 - free as f32 * 100.0 / capacity as f32);
