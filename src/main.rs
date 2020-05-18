@@ -239,6 +239,12 @@ fn run(args: Args) -> Result<()> {
             }
 
             if args.paths.is_empty() {
+                mnts.sort_by(|a, b| {
+                    u64::min(1, a.capacity)
+                        .cmp(&u64::min(1, b.capacity))
+                        .reverse()
+                        .then(a.mnt_dir.cmp(&b.mnt_dir))
+                });
                 let mnts: &[&MountEntry] = &mnts.iter().collect::<Vec<_>>();
                 display_mounts(&mnts, &theme, args.inodes);
             } else {
