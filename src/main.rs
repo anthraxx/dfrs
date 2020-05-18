@@ -39,8 +39,8 @@ pub fn format_count(num: f64, delimiter: f64) -> String {
     format!("{}{}", pretty_bytes, unit)
 }
 
-fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
-    let fill_len_total = (percentage as f32 / 100.0 * width as f32).ceil() as usize;
+fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
+    let fill_len_total = (percentage.unwrap_or(0.0) as f32 / 100.0 * width as f32).ceil() as usize;
     let fill_len_low = std::cmp::min(
         fill_len_total,
         (width as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
@@ -50,6 +50,11 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
         (width as f32 * theme.threshold_usage_high / 100.0).ceil() as usize,
     ) - fill_len_low;
     let fill_len_high = fill_len_total - fill_len_low - fill_len_medium;
+
+    let color_empty = match percentage {
+        Some(_) => theme.color_usage_low,
+        None => theme.color_usage_void
+    }.unwrap_or(Color::Green);
 
     let fill_low = theme
         .char_bar_filled
@@ -70,7 +75,7 @@ fn bar(width: usize, percentage: u8, theme: &Theme) -> String {
         .char_bar_empty
         .to_string()
         .repeat(width - fill_len_total)
-        .color(theme.color_usage_low.unwrap_or(Color::White));
+        .color(color_empty);
 
     format!(
         "{}{}{}{}{}{}",
@@ -127,14 +132,17 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
         let color_usage = match mnt.used_percentage {
             Some(p) if p >= theme.threshold_usage_high => theme.color_usage_high,
             Some(p) if p >= theme.threshold_usage_medium => theme.color_usage_medium,
-            _ => theme.color_usage_low,
+            Some(_) => theme.color_usage_low,
+            _ => theme.color_usage_void,
         }.unwrap_or(Color::White);
+
         let used_percentage = mnt.used_percentage.unwrap_or(0.0);
+
         println!(
             "{:<fsname_width$} {:<type_width$} {} {}% {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            bar(bar_width, used_percentage.ceil() as u8, &theme),
+            bar(bar_width, mnt.used_percentage, &theme),
             format!("{:>5.1}", (used_percentage * 10.0).round() / 10.0).color(color_usage),
             mnt.used.color(color_usage),
             mnt.free.color(color_usage),
