@@ -28,7 +28,7 @@ use anyhow::Result;
 pub fn format_count(num: f64, delimiter: f64) -> String {
     let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
     if num < 1_f64 {
-        return format!("{}{}", num, units[0]);
+        return format!("{}", num);
     }
     let exponent = cmp::min(
         (num.ln() / delimiter.ln()).floor() as i32,
