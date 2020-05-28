@@ -214,11 +214,11 @@ fn run(args: Args) -> Result<()> {
                 let (capacity, free) = match mnt.statfs {
                     Some(stat) => {
                         if args.inodes {
-                            (stat.files(), stat.files_free())
+                            (stat.files() as u64, stat.files_free() as u64)
                         } else {
                             (
-                                stat.blocks() * (stat.block_size() as u64),
-                                stat.blocks_available() * (stat.block_size() as u64)
+                                stat.blocks() as u64 * (stat.block_size() as u64),
+                                stat.blocks_available() as u64 * (stat.block_size() as u64)
                             )
                         }
                     },
