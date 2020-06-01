@@ -6,10 +6,16 @@ BINDIR ?= ${PREFIX}/bin
 DATAROOTDIR ?= ${PREFIX}/share
 MANDIR ?= ${DATAROOTDIR}/man
 
+TARBALLDIR ?= target/release/tarball
+TARBALLFORMAT=tar.gz
+
 RM := rm
 CARGO := cargo
 SCDOC := scdoc
 INSTALL := install
+GIT := git
+GPG := gpg
+SED := sed
 
 DEBUG := 0
 ifeq ($(DEBUG), 0)
@@ -71,3 +77,13 @@ uninstall:
 	$(RM) -f $(DESTDIR)$(DATAROOTDIR)/bash-completion/completions/dfrs
 	$(RM) -f $(DESTDIR)$(DATAROOTDIR)/zsh/site-functions/_dfrs
 	$(RM) -f $(DESTDIR)$(DATAROOTDIR)/fish/vendor_completions.d/dfrs.fish
+
+release: all
+	$(INSTALL) -d $(TARBALLDIR)
+	@read -p 'version> ' TAG && \
+		$(SED) "s|version = .*|version = \"$$TAG\"|" -i Cargo.toml && \
+		$(CARGO) build --release && \
+		$(GIT) commit --gpg-sign --message "version: release $$TAG" Cargo.toml Cargo.lock && \
+		$(GIT) tag --sign --message "version: release $$TAG" $$TAG && \
+		$(GIT) archive -o $(TARBALLDIR)/dfrs-$$TAG.$(TARBALLFORMAT) --format $(TARBALLFORMAT) --prefix=dfrs-$$TAG/ $$TAG && \
+		$(GPG) --detach-sign $(TARBALLDIR)/dfrs-$$TAG.$(TARBALLFORMAT)
