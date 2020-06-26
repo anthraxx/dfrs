@@ -38,6 +38,7 @@ test:
 
 lint:
 	$(CARGO) check
+	find . -name '*.rs' -exec touch {} +
 	$(CARGO) clippy --all -- \
 		-D clippy::all \
 		-D clippy::pedantic \
