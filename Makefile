@@ -38,16 +38,7 @@ test:
 
 lint:
 	$(CARGO) check
-	$(CARGO) clippy --all -- \
-		-D clippy::all \
-		-D clippy::pedantic \
-		-D clippy::restriction \
-		-D clippy::correctness \
-		-D clippy::complexity \
-		-D clippy::nursery \
-		-D clippy::perf \
-		-D clippy::cargo \
-		-D warnings
+	$(CARGO) clippy --all -- -D warnings
 
 docs: man completions
 

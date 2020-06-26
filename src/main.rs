@@ -1,3 +1,4 @@
+#![deny(clippy::all, clippy::restriction, clippy::nursery, clippy::pedantic, clippy::cargo)]
 extern crate anyhow;
 extern crate strum;
 extern crate strum_macros;
