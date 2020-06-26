@@ -10,7 +10,6 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 nix = "0.17"
-libc = "0.2"
 anyhow = "1.0"
 colored = "1.9"
 structopt = "0.3"

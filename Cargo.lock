@@ -86,7 +86,6 @@ dependencies = [
  "anyhow",
  "colored",
  "env_logger",
- "libc",
  "log",
  "nix",
  "structopt",
