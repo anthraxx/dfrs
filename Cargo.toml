@@ -19,3 +19,7 @@ env_logger = "0.7"
 strum = "0.18"
 strum_macros = "0.18"
 # termcolor = "1.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
