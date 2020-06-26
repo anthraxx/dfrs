@@ -37,6 +37,7 @@ test:
 	$(CARGO) test $(CARGO_OPTIONS)
 
 lint:
+	$(CARGO) fmt -- --check
 	$(CARGO) check
 	$(CARGO) clippy --all -- \
 		-D clippy::all \
