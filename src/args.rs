@@ -77,8 +77,8 @@ impl DisplayFilter {
 
     pub fn get_mnt_fsname_filter(&self) -> Vec<&'static str> {
         match self {
-            DisplayFilter::Minimal => vec!["/dev*"],
-            DisplayFilter::More => vec!["dev", "run", "tmpfs", "/dev*"],
+            DisplayFilter::Minimal => vec!["/dev*", "storage"],
+            DisplayFilter::More => vec!["dev", "run", "tmpfs", "/dev*", "storage"],
             DisplayFilter::All => vec!["*"],
         }
     }
