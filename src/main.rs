@@ -5,6 +5,7 @@
     clippy::pedantic,
     clippy::cargo
 )]
+#![allow(clippy::print_stdout)]
 extern crate anyhow;
 extern crate strum;
 extern crate strum_macros;
