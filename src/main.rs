@@ -113,15 +113,15 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
     let label_type = "Type";
     let label_bar = "";
     let label_used_percentage = "Used%";
-    let label_used = "Used";
     let label_available = "Avail";
+    let label_used = "Used";
     let label_capacity = if inodes_mode { "Inodes" } else { "Size" };
     let label_mounted = "Mounted on";
 
     let fsname_width = column_width(&mnts, |m| m.mnt_fsname.len(), label_fsname);
     let type_width = column_width(&mnts, |m| m.mnt_type.len(), label_type);
-    let used_width = column_width(&mnts, |m| m.used_formatted.len(), label_used);
     let available_width = column_width(&mnts, |m| m.free_formatted.len(), label_available);
+    let used_width = column_width(&mnts, |m| m.used_formatted.len(), label_used);
     let capacity_width = column_width(&mnts, |m| m.capacity_formatted.len(), label_capacity);
 
     println!(
@@ -130,8 +130,8 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
         label_type.color(color_heading),
         label_bar.color(color_heading),
         label_used_percentage.color(color_heading),
-        label_used.color(color_heading),
         label_available.color(color_heading),
+        label_used.color(color_heading),
         label_capacity.color(color_heading),
         label_mounted.color(color_heading),
         fsname_width = fsname_width,
@@ -160,8 +160,8 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage(), &theme),
             used_percentage,
-            mnt.used_formatted.color(usage_color),
             mnt.free_formatted.color(usage_color),
+            mnt.used_formatted.color(usage_color),
             mnt.capacity_formatted.color(usage_color),
             mnt.mnt_dir,
             fsname_width = fsname_width,
