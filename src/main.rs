@@ -17,6 +17,7 @@ use mount::*;
 
 use std::cmp;
 use std::fs::File;
+use std::path::Path;
 
 use nix::sys::statfs;
 
@@ -85,7 +86,10 @@ fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
 }
 
 #[inline]
-fn column_width(mnt: &[&MountEntry], f: &dyn Fn(&&MountEntry) -> usize, heading: &str) -> usize {
+fn column_width<F>(mnt: &[MountEntry], f: F, heading: &str) -> usize
+where
+    F: Fn(&MountEntry) -> usize,
+{
     mnt.iter()
         .map(f)
         .chain(std::iter::once(heading.len()))
@@ -93,7 +97,7 @@ fn column_width(mnt: &[&MountEntry], f: &dyn Fn(&&MountEntry) -> usize, heading:
         .unwrap()
 }
 
-fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
+fn display_mounts(mnts: &[MountEntry], theme: &Theme, inodes_mode: bool) {
     let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
@@ -106,11 +110,11 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
     let label_capacity = if inodes_mode { "Inodes" } else { "Size" };
     let label_mounted = "Mounted on";
 
-    let fsname_width = column_width(&mnts, &|m: &&MountEntry| m.mnt_fsname.len(), label_fsname);
-    let type_width = column_width(&mnts, &|m: &&MountEntry| m.mnt_type.len(), label_type);
-    let used_width = column_width(&mnts, &|m: &&MountEntry| m.used_formatted.len(), label_used);
-    let available_width = column_width(&mnts, &|m: &&MountEntry| m.free_formatted.len(), label_available);
-    let capacity_width = column_width(&mnts, &|m: &&MountEntry| m.capacity_formatted.len(), label_capacity);
+    let fsname_width = column_width(&mnts, |m| m.mnt_fsname.len(), label_fsname);
+    let type_width = column_width(&mnts, |m| m.mnt_type.len(), label_type);
+    let used_width = column_width(&mnts, |m| m.used_formatted.len(), label_used);
+    let available_width = column_width(&mnts, |m| m.free_formatted.len(), label_available);
+    let capacity_width = column_width(&mnts, |m| m.capacity_formatted.len(), label_capacity);
 
     println!(
         "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
@@ -161,6 +165,41 @@ fn display_mounts(mnts: &[&MountEntry], theme: &Theme, inodes_mode: bool) {
     }
 }
 
+#[inline]
+fn get_best_mount_match<'a>(path: &Path, mnts: &'a [MountEntry]) -> Option<&'a MountEntry> {
+    let scores = mnts
+        .iter()
+        .map(|mnt| (calculate_path_match_score(path, &mnt), mnt));
+    let best = scores.max_by_key(|x| x.0)?;
+    Some(best.1)
+}
+
+#[inline]
+fn calculate_path_match_score(path: &Path, mnt: &MountEntry) -> usize {
+    if path.starts_with(&mnt.mnt_dir) {
+        mnt.mnt_dir.len()
+    } else {
+        0
+    }
+}
+
+#[inline]
+fn cmp_by_capacity_and_dir_name(a: &MountEntry, b: &MountEntry) -> cmp::Ordering {
+    u64::min(1, a.capacity)
+        .cmp(&u64::min(1, b.capacity))
+        .reverse()
+        .then(a.mnt_dir.cmp(&b.mnt_dir))
+}
+
+#[inline]
+fn mnt_matches_filter(mnt: &MountEntry, filter: &str) -> bool {
+    if filter.ends_with('*') {
+        mnt.mnt_fsname.starts_with(&filter[..filter.len() - 1])
+    } else {
+        mnt.mnt_fsname == filter
+    }
+}
+
 fn run(args: Args) -> Result<()> {
     if let Some(color) = args.color {
         debug!("Bypass tty detection for colors: {:?}", color);
@@ -195,19 +234,13 @@ fn run(args: Args) -> Result<()> {
                 DisplayFilter::from_u8(args.display)
             };
 
-            let mnts = get_mounts(f)?;
-            let mut mnts:Vec<MountEntry> = mnts
-                .into_iter()
-                .filter(|mount| {
-                    mounts_to_show.get_mnt_fsname_filter().iter().any(|&fsname| {
-                        if fsname.ends_with('*') {
-                            mount.mnt_fsname.starts_with(&fsname[..fsname.len() - 1])
-                        } else {
-                            mount.mnt_fsname == fsname
-                        }
-                    })
-                })
-                .collect::<Vec<_>>();
+            let mut mnts = get_mounts(f)?;
+            mnts.retain(|mount| {
+                mounts_to_show
+                    .get_mnt_fsname_filter()
+                    .iter()
+                    .any(|fsname| mnt_matches_filter(mount, fsname))
+            });
 
             for mnt in &mut mnts {
                 mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();
@@ -240,27 +273,25 @@ fn run(args: Args) -> Result<()> {
             }
 
             if args.paths.is_empty() {
-                mnts.sort_by(|a, b| {
-                    u64::min(1, a.capacity)
-                        .cmp(&u64::min(1, b.capacity))
-                        .reverse()
-                        .then(a.mnt_dir.cmp(&b.mnt_dir))
-                });
-                let mnts: &[&MountEntry] = &mnts.iter().collect::<Vec<_>>();
+                mnts.sort_by(cmp_by_capacity_and_dir_name);
                 display_mounts(&mnts, &theme, args.inodes);
             } else {
-                let mnts: &[&MountEntry] = &args.paths.iter().filter_map(|path| {
-                    path.canonicalize().map_err(|error|
-                        eprintln!("dfrs: {}: {}", path.clone().into_os_string().to_string_lossy(), error)
-                    ).ok()
-                }).map(|path| {
-                    debug!("{:?}", path);
-                    mnts.iter().map(|mnt| {
-                        (if path.starts_with(&mnt.mnt_dir) { mnt.mnt_dir.len() } else { 0 }, mnt)
-                    }).max_by_key(|x| x.0).map(|x| x.1)
-                }).filter_map(|opt| opt).collect::<Vec<_>>();
+                let mut out = Vec::new();
+                for path in args.paths {
+                    let path = match path.canonicalize() {
+                        Ok(path) => path,
+                        Err(err) => {
+                            eprintln!("dfrs: {}: {}", path.display(), err);
+                            continue;
+                        },
+                    };
 
-                display_mounts(&mnts, &theme, args.inodes);
+                    if let Some(mnt) = get_best_mount_match(&path, &mnts) {
+                        out.push(mnt.clone());
+                    }
+                }
+
+                display_mounts(&out, &theme, args.inodes);
             }
         }
     }

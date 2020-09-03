@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
+#[derive(Clone)]
 pub struct MountEntry {
     pub mnt_fsname: String,
     pub mnt_dir: String,
