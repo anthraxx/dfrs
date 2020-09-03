@@ -1,4 +1,10 @@
-#![deny(clippy::all, clippy::restriction, clippy::nursery, clippy::pedantic, clippy::cargo)]
+#![deny(
+    clippy::all,
+    clippy::restriction,
+    clippy::nursery,
+    clippy::pedantic,
+    clippy::cargo
+)]
 extern crate anyhow;
 extern crate strum;
 extern crate strum_macros;
@@ -23,9 +29,9 @@ use nix::sys::statfs;
 
 use env_logger::Env;
 
+use anyhow::Result;
 use colored::*;
 use structopt::StructOpt;
-use anyhow::Result;
 
 pub fn format_count(num: f64, delimiter: f64) -> String {
     let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
@@ -55,8 +61,9 @@ fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
 
     let color_empty = match percentage {
         Some(_) => theme.color_usage_low,
-        None => theme.color_usage_void
-    }.unwrap_or(Color::Green);
+        None => theme.color_usage_void,
+    }
+    .unwrap_or(Color::Green);
 
     let fill_low = theme
         .char_bar_filled
@@ -139,12 +146,18 @@ fn display_mounts(mnts: &[MountEntry], theme: &Theme, inodes_mode: bool) {
             Some(p) if p >= theme.threshold_usage_medium => theme.color_usage_medium,
             Some(_) => theme.color_usage_low,
             _ => theme.color_usage_void,
-        }.unwrap_or(Color::White);
+        }
+        .unwrap_or(Color::White);
 
         let used_percentage = match mnt.used_percentage {
-            Some(percentage) => format!("{:>5.1}{}", (percentage * 10.0).round() / 10.0, "%".color(Color::White)),
-            None => format!("{:>6}", "-")
-        }.color(color_usage);
+            Some(percentage) => format!(
+                "{:>5.1}{}",
+                (percentage * 10.0).round() / 10.0,
+                "%".color(Color::White)
+            ),
+            None => format!("{:>6}", "-"),
+        }
+        .color(color_usage);
 
         println!(
             "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
@@ -204,13 +217,13 @@ fn run(args: Args) -> Result<()> {
     if let Some(color) = args.color {
         debug!("Bypass tty detection for colors: {:?}", color);
         match color {
-            ColorOpt::Auto => {},
+            ColorOpt::Auto => {}
             ColorOpt::Always => {
                 colored::control::set_override(true);
-            },
+            }
             ColorOpt::Never => {
                 colored::control::set_override(false);
-            },
+            }
         }
     }
 
@@ -224,7 +237,11 @@ fn run(args: Args) -> Result<()> {
         _ => {
             let theme = Theme::new();
             let f = File::open("/proc/self/mounts")?;
-            let delimiter = if args.base10 { NumberFormat::Base10 } else { NumberFormat::Base2 };
+            let delimiter = if args.base10 {
+                NumberFormat::Base10
+            } else {
+                NumberFormat::Base2
+            };
 
             let mounts_to_show = if args.all {
                 DisplayFilter::All
@@ -252,10 +269,10 @@ fn run(args: Args) -> Result<()> {
                         } else {
                             (
                                 stat.blocks() as u64 * (stat.block_size() as u64),
-                                stat.blocks_available() as u64 * (stat.block_size() as u64)
+                                stat.blocks_available() as u64 * (stat.block_size() as u64),
                             )
                         }
-                    },
+                    }
                     None => (0, 0),
                 };
 
@@ -263,7 +280,8 @@ fn run(args: Args) -> Result<()> {
                 mnt.free = free;
                 mnt.used = capacity - free;
 
-                mnt.capacity_formatted = format_count(mnt.capacity as f64, delimiter.get_powers_of());
+                mnt.capacity_formatted =
+                    format_count(mnt.capacity as f64, delimiter.get_powers_of());
                 mnt.free_formatted = format_count(mnt.free as f64, delimiter.get_powers_of());
                 mnt.used_formatted = format_count(mnt.used as f64, delimiter.get_powers_of());
 
@@ -283,7 +301,7 @@ fn run(args: Args) -> Result<()> {
                         Err(err) => {
                             eprintln!("dfrs: {}: {}", path.display(), err);
                             continue;
-                        },
+                        }
                     };
 
                     if let Some(mnt) = get_best_mount_match(&path, &mnts) {
@@ -302,14 +320,9 @@ fn run(args: Args) -> Result<()> {
 fn main() {
     let args = Args::from_args();
 
-    let logging = if args.verbose {
-        "debug"
-    } else {
-        "info"
-    };
+    let logging = if args.verbose { "debug" } else { "info" };
 
-    env_logger::init_from_env(Env::default()
-        .default_filter_or(logging));
+    env_logger::init_from_env(Env::default().default_filter_or(logging));
 
     if let Err(err) = run(args) {
         eprintln!("Error: {}", err);

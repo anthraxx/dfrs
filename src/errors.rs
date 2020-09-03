@@ -1,2 +1,2 @@
-pub use log::{debug, info, warn, error};
-pub use anyhow::{Error, Result, Context, anyhow};
+pub use anyhow::{anyhow, Context, Error, Result};
+pub use log::{debug, error, info, warn};

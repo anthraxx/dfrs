@@ -1,38 +1,38 @@
-use structopt::StructOpt;
 use structopt::clap::{AppSettings, Shell};
+use structopt::StructOpt;
 
 use std::io::stdout;
 
-use strum_macros::EnumString;
-use std::path::PathBuf;
 use anyhow::Result;
+use std::path::PathBuf;
+use strum_macros::EnumString;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about="Display file system space usage using graphs and colors.", global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
 pub struct Args {
     /// Show more, use twice to show all
-    #[structopt(short="a", group="display_group", parse(from_occurrences))]
+    #[structopt(short = "a", group = "display_group", parse(from_occurrences))]
     pub display: u8,
     /// Show more
-    #[structopt(long, group="display_group")]
+    #[structopt(long, group = "display_group")]
     pub more: bool,
     /// Show all
-    #[structopt(long, group="display_group")]
+    #[structopt(long, group = "display_group")]
     pub all: bool,
     /// Bypass tty detection for colors: auto, always, never
-    #[structopt(long, group="color_group")]
+    #[structopt(long, group = "color_group")]
     pub color: Option<ColorOpt>,
     /// Bypass tty detection and always show colors
-    #[structopt(short="c", group="color_group")]
+    #[structopt(short = "c", group = "color_group")]
     pub color_always: bool,
     /// Show inode instead of block usage
     #[structopt(short, long)]
     pub inodes: bool,
     /// Print sizes in powers of 1024 (e.g., 1023M)
-    #[structopt(short="h", long="human-readable", group="number_format")]
+    #[structopt(short = "h", long = "human-readable", group = "number_format")]
     pub base2: bool,
     /// Print sizes in powers of 1000 (e.g., 1.1G)
-    #[structopt(short="H", long="si", group="number_format")]
+    #[structopt(short = "H", long = "si", group = "number_format")]
     pub base10: bool,
     /// Verbose logging
     #[structopt(short)]
@@ -46,7 +46,7 @@ pub struct Args {
 #[derive(Debug, StructOpt)]
 pub enum SubCommand {
     /// Generate shell completions
-    #[structopt(name="completions")]
+    #[structopt(name = "completions")]
     Completions(Completions),
 }
 
@@ -55,7 +55,7 @@ pub enum SubCommand {
 pub enum ColorOpt {
     Auto,
     Always,
-    Never
+    Never,
 }
 
 #[derive(Debug, StructOpt, EnumString)]
@@ -71,7 +71,7 @@ impl DisplayFilter {
         match n {
             0 => DisplayFilter::Minimal,
             1 => DisplayFilter::More,
-            _ => DisplayFilter::All
+            _ => DisplayFilter::All,
         }
     }
 
