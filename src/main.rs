@@ -142,15 +142,9 @@ fn display_mounts(mnts: &[MountEntry], theme: &Theme, inodes_mode: bool) {
         capacity_width = capacity_width,
     );
     for mnt in mnts {
-        let color_usage = match mnt.used_percentage {
-            Some(p) if p >= theme.threshold_usage_high => theme.color_usage_high,
-            Some(p) if p >= theme.threshold_usage_medium => theme.color_usage_medium,
-            Some(_) => theme.color_usage_low,
-            _ => theme.color_usage_void,
-        }
-        .unwrap_or(Color::White);
+        let usage_color = mnt.usage_color(&theme);
 
-        let used_percentage = match mnt.used_percentage {
+        let used_percentage = match mnt.used_percentage() {
             Some(percentage) => format!(
                 "{:>5.1}{}",
                 (percentage * 10.0).round() / 10.0,
@@ -158,17 +152,17 @@ fn display_mounts(mnts: &[MountEntry], theme: &Theme, inodes_mode: bool) {
             ),
             None => format!("{:>6}", "-"),
         }
-        .color(color_usage);
+        .color(usage_color);
 
         println!(
             "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
             mnt.mnt_fsname,
             mnt.mnt_type,
-            bar(bar_width, mnt.used_percentage, &theme),
+            bar(bar_width, mnt.used_percentage(), &theme),
             used_percentage,
-            mnt.used_formatted.color(color_usage),
-            mnt.free_formatted.color(color_usage),
-            mnt.capacity_formatted.color(color_usage),
+            mnt.used_formatted.color(usage_color),
+            mnt.free_formatted.color(usage_color),
+            mnt.capacity_formatted.color(usage_color),
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width,
@@ -212,6 +206,21 @@ fn mnt_matches_filter(mnt: &MountEntry, filter: &str) -> bool {
     } else {
         mnt.mnt_fsname == filter
     }
+}
+
+#[inline]
+fn calc_total(mnts: &[MountEntry], delimiter: &NumberFormat) -> MountEntry {
+    let mut total = MountEntry::named("total".to_string());
+
+    total.free = mnts.iter().map(|mnt| mnt.free).sum();
+    total.used = mnts.iter().map(|mnt| mnt.used).sum();
+    total.capacity = mnts.iter().map(|mnt| mnt.capacity).sum();
+
+    total.free_formatted = format_count(total.free as f64, delimiter.get_powers_of());
+    total.used_formatted = format_count(total.used as f64, delimiter.get_powers_of());
+    total.capacity_formatted = format_count(total.capacity as f64, delimiter.get_powers_of());
+
+    total
 }
 
 fn run(args: Args) -> Result<()> {
@@ -285,14 +294,13 @@ fn run(args: Args) -> Result<()> {
                     format_count(mnt.capacity as f64, delimiter.get_powers_of());
                 mnt.free_formatted = format_count(mnt.free as f64, delimiter.get_powers_of());
                 mnt.used_formatted = format_count(mnt.used as f64, delimiter.get_powers_of());
-
-                if capacity > 0 {
-                    mnt.used_percentage = Some(100.0 - free as f32 * 100.0 / capacity as f32);
-                }
             }
 
             if args.paths.is_empty() {
                 mnts.sort_by(cmp_by_capacity_and_dir_name);
+                if args.total {
+                    mnts.push(calc_total(&mnts, &delimiter));
+                }
                 display_mounts(&mnts, &theme, args.inodes);
             } else {
                 let mut out = Vec::new();
@@ -308,6 +316,10 @@ fn run(args: Args) -> Result<()> {
                     if let Some(mnt) = get_best_mount_match(&path, &mnts) {
                         out.push(mnt.clone());
                     }
+                }
+
+                if args.total {
+                    out.push(calc_total(&mnts, &delimiter));
                 }
 
                 display_mounts(&out, &theme, args.inodes);

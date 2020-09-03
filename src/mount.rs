@@ -1,5 +1,7 @@
 use crate::errors::*;
 
+use crate::theme::Theme;
+use colored::Color;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -18,11 +20,31 @@ pub struct MountEntry {
     pub capacity_formatted: String,
     pub free_formatted: String,
     pub used_formatted: String,
-    pub used_percentage: Option<f32>,
     pub statfs: Option<nix::sys::statfs::Statfs>,
 }
 
 impl MountEntry {
+    pub fn used_percentage(&self) -> Option<f32> {
+        match &self.capacity {
+            0 => None,
+            _ => Some(100.0 - *&self.free as f32 * 100.0 / *&self.capacity as f32),
+        }
+    }
+
+    pub fn usage_color(&self, theme: &Theme) -> Color {
+        match &self.used_percentage() {
+            Some(p) if p >= &theme.threshold_usage_high => &theme.color_usage_high,
+            Some(p) if p >= &theme.threshold_usage_medium => &theme.color_usage_medium,
+            Some(_) => &theme.color_usage_low,
+            _ => &theme.color_usage_void,
+        }
+        .unwrap_or(Color::White)
+    }
+
+    pub fn named(name: String) -> MountEntry {
+        MountEntry::new(name, "-".to_string(), "-".to_string(), "".to_string(), 0, 0)
+    }
+
     fn new(
         mnt_fsname: String,
         mnt_dir: String,
@@ -44,7 +66,6 @@ impl MountEntry {
             capacity_formatted: "".to_string(),
             free_formatted: "".to_string(),
             used_formatted: "".to_string(),
-            used_percentage: None,
             statfs: None,
         }
     }

@@ -41,6 +41,9 @@ Show information about the file system on which each _FILE_ resides, or all regu
 *-H*, *--si*
 	Print sizes in powers of 1000 (e.g., 1.1G)
 
+*--total*
+	Produce and show a grand total
+
 *-V*, *--version*
 	Prints version information
 

@@ -34,6 +34,9 @@ pub struct Args {
     /// Print sizes in powers of 1000 (e.g., 1.1G)
     #[structopt(short = "H", long = "si", group = "number_format")]
     pub base10: bool,
+    /// Produce and show a grand total
+    #[structopt(long)]
+    pub total: bool,
     /// Verbose logging
     #[structopt(short)]
     pub verbose: bool,
