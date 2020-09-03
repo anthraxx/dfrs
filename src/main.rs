@@ -94,9 +94,9 @@ fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
 }
 
 #[inline]
-fn column_width<F>(mnt: &[MountEntry], f: F, heading: &str) -> usize
+fn column_width<F>(mnt: &[Mount], f: F, heading: &str) -> usize
 where
-    F: Fn(&MountEntry) -> usize,
+    F: Fn(&Mount) -> usize,
 {
     mnt.iter()
         .map(f)
@@ -105,7 +105,7 @@ where
         .unwrap()
 }
 
-fn display_mounts(mnts: &[MountEntry], theme: &Theme, inodes_mode: bool) {
+fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
     let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
@@ -174,7 +174,7 @@ fn display_mounts(mnts: &[MountEntry], theme: &Theme, inodes_mode: bool) {
 }
 
 #[inline]
-fn get_best_mount_match<'a>(path: &Path, mnts: &'a [MountEntry]) -> Option<&'a MountEntry> {
+fn get_best_mount_match<'a>(path: &Path, mnts: &'a [Mount]) -> Option<&'a Mount> {
     let scores = mnts
         .iter()
         .map(|mnt| (calculate_path_match_score(path, &mnt), mnt));
@@ -183,7 +183,7 @@ fn get_best_mount_match<'a>(path: &Path, mnts: &'a [MountEntry]) -> Option<&'a M
 }
 
 #[inline]
-fn calculate_path_match_score(path: &Path, mnt: &MountEntry) -> usize {
+fn calculate_path_match_score(path: &Path, mnt: &Mount) -> usize {
     if path.starts_with(&mnt.mnt_dir) {
         mnt.mnt_dir.len()
     } else {
@@ -192,7 +192,7 @@ fn calculate_path_match_score(path: &Path, mnt: &MountEntry) -> usize {
 }
 
 #[inline]
-fn cmp_by_capacity_and_dir_name(a: &MountEntry, b: &MountEntry) -> cmp::Ordering {
+fn cmp_by_capacity_and_dir_name(a: &Mount, b: &Mount) -> cmp::Ordering {
     u64::min(1, a.capacity)
         .cmp(&u64::min(1, b.capacity))
         .reverse()
@@ -200,7 +200,7 @@ fn cmp_by_capacity_and_dir_name(a: &MountEntry, b: &MountEntry) -> cmp::Ordering
 }
 
 #[inline]
-fn mnt_matches_filter(mnt: &MountEntry, filter: &str) -> bool {
+fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
     if filter.ends_with('*') {
         mnt.mnt_fsname.starts_with(&filter[..filter.len() - 1])
     } else {
@@ -209,8 +209,8 @@ fn mnt_matches_filter(mnt: &MountEntry, filter: &str) -> bool {
 }
 
 #[inline]
-fn calc_total(mnts: &[MountEntry], delimiter: &NumberFormat) -> MountEntry {
-    let mut total = MountEntry::named("total".to_string());
+fn calc_total(mnts: &[Mount], delimiter: &NumberFormat) -> Mount {
+    let mut total = Mount::named("total".to_string());
 
     total.free = mnts.iter().map(|mnt| mnt.free).sum();
     total.used = mnts.iter().map(|mnt| mnt.used).sum();
@@ -275,7 +275,7 @@ fn get_mounts(
     delimiter: &NumberFormat,
     show_inodes: bool,
     paths: &Vec<PathBuf>,
-) -> Result<Vec<MountEntry>> {
+) -> Result<Vec<Mount>> {
     let f = File::open("/proc/self/mounts")?;
 
     let mut mnts = parse_mounts(f)?;

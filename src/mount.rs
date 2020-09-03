@@ -7,7 +7,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 
 #[derive(Clone)]
-pub struct MountEntry {
+pub struct Mount {
     pub mnt_fsname: String,
     pub mnt_dir: String,
     pub mnt_type: String,
@@ -23,7 +23,7 @@ pub struct MountEntry {
     pub statfs: Option<nix::sys::statfs::Statfs>,
 }
 
-impl MountEntry {
+impl Mount {
     pub fn used_percentage(&self) -> Option<f32> {
         match self.capacity {
             0 => None,
@@ -41,8 +41,8 @@ impl MountEntry {
         .unwrap_or(Color::White)
     }
 
-    pub fn named(name: String) -> MountEntry {
-        MountEntry::new(name, "-".to_string(), "-".to_string(), "".to_string(), 0, 0)
+    pub fn named(name: String) -> Mount {
+        Mount::new(name, "-".to_string(), "-".to_string(), "".to_string(), 0, 0)
     }
 
     fn new(
@@ -52,8 +52,8 @@ impl MountEntry {
         mnt_opts: String,
         mnt_freq: i32,
         mnt_passno: i32,
-    ) -> MountEntry {
-        MountEntry {
+    ) -> Mount {
+        Mount {
             mnt_fsname,
             mnt_dir,
             mnt_type,
@@ -71,9 +71,9 @@ impl MountEntry {
     }
 }
 
-fn parse_mount_line(line: &str) -> Result<MountEntry> {
+fn parse_mount_line(line: &str) -> Result<Mount> {
     let mut mnt_a = line.split_whitespace();
-    Ok(MountEntry::new(
+    Ok(Mount::new(
         mnt_a
             .next()
             .ok_or_else(|| anyhow!("Missing value fsname"))?
@@ -101,7 +101,7 @@ fn parse_mount_line(line: &str) -> Result<MountEntry> {
     ))
 }
 
-pub fn parse_mounts(f: File) -> Result<Vec<MountEntry>> {
+pub fn parse_mounts(f: File) -> Result<Vec<Mount>> {
     BufReader::new(f)
         .lines()
         .map(|line| {
