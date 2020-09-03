@@ -24,7 +24,7 @@ use mount::*;
 
 use std::cmp;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use nix::sys::statfs;
 
@@ -246,13 +246,11 @@ fn run(args: Args) -> Result<()> {
         Some(SubCommand::Completions(completions)) => args::gen_completions(&completions)?,
         _ => {
             let theme = Theme::new();
-            let f = File::open("/proc/self/mounts")?;
             let delimiter = if args.base10 {
                 NumberFormat::Base10
             } else {
                 NumberFormat::Base2
             };
-
             let mounts_to_show = if args.all {
                 DisplayFilter::All
             } else if args.more {
@@ -261,73 +259,79 @@ fn run(args: Args) -> Result<()> {
                 DisplayFilter::from_u8(args.display)
             };
 
-            let mut mnts = get_mounts(f)?;
-            mnts.retain(|mount| {
-                mounts_to_show
-                    .get_mnt_fsname_filter()
-                    .iter()
-                    .any(|fsname| mnt_matches_filter(mount, fsname))
-            });
-
-            for mnt in &mut mnts {
-                mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();
-
-                let (capacity, free) = match mnt.statfs {
-                    Some(stat) => {
-                        if args.inodes {
-                            (stat.files() as u64, stat.files_free() as u64)
-                        } else {
-                            (
-                                stat.blocks() as u64 * (stat.block_size() as u64),
-                                stat.blocks_available() as u64 * (stat.block_size() as u64),
-                            )
-                        }
-                    }
-                    None => (0, 0),
-                };
-
-                mnt.capacity = capacity;
-                mnt.free = free;
-                mnt.used = capacity - free;
-
-                mnt.capacity_formatted =
-                    format_count(mnt.capacity as f64, delimiter.get_powers_of());
-                mnt.free_formatted = format_count(mnt.free as f64, delimiter.get_powers_of());
-                mnt.used_formatted = format_count(mnt.used as f64, delimiter.get_powers_of());
+            let mut mnts = get_mounts(&mounts_to_show, &delimiter, args.inodes, &args.paths)?;
+            if args.total {
+                mnts.push(calc_total(&mnts, &delimiter));
             }
-
-            if args.paths.is_empty() {
-                mnts.sort_by(cmp_by_capacity_and_dir_name);
-                if args.total {
-                    mnts.push(calc_total(&mnts, &delimiter));
-                }
-                display_mounts(&mnts, &theme, args.inodes);
-            } else {
-                let mut out = Vec::new();
-                for path in args.paths {
-                    let path = match path.canonicalize() {
-                        Ok(path) => path,
-                        Err(err) => {
-                            eprintln!("dfrs: {}: {}", path.display(), err);
-                            continue;
-                        }
-                    };
-
-                    if let Some(mnt) = get_best_mount_match(&path, &mnts) {
-                        out.push(mnt.clone());
-                    }
-                }
-
-                if args.total {
-                    out.push(calc_total(&mnts, &delimiter));
-                }
-
-                display_mounts(&out, &theme, args.inodes);
-            }
+            display_mounts(&mnts, &theme, args.inodes);
         }
     }
 
     Ok(())
+}
+
+fn get_mounts(
+    mounts_to_show: &DisplayFilter,
+    delimiter: &NumberFormat,
+    show_inodes: bool,
+    paths: &Vec<PathBuf>,
+) -> Result<Vec<MountEntry>> {
+    let f = File::open("/proc/self/mounts")?;
+
+    let mut mnts = parse_mounts(f)?;
+    mnts.retain(|mount| {
+        mounts_to_show
+            .get_mnt_fsname_filter()
+            .iter()
+            .any(|fsname| mnt_matches_filter(mount, fsname))
+    });
+
+    for mnt in &mut mnts {
+        mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();
+
+        let (capacity, free) = match mnt.statfs {
+            Some(stat) => {
+                if show_inodes {
+                    (stat.files() as u64, stat.files_free() as u64)
+                } else {
+                    (
+                        stat.blocks() as u64 * (stat.block_size() as u64),
+                        stat.blocks_available() as u64 * (stat.block_size() as u64),
+                    )
+                }
+            }
+            None => (0, 0),
+        };
+
+        mnt.capacity = capacity;
+        mnt.free = free;
+        mnt.used = capacity - free;
+
+        mnt.capacity_formatted = format_count(mnt.capacity as f64, delimiter.get_powers_of());
+        mnt.free_formatted = format_count(mnt.free as f64, delimiter.get_powers_of());
+        mnt.used_formatted = format_count(mnt.used as f64, delimiter.get_powers_of());
+    }
+
+    if !paths.is_empty() {
+        let mut out = Vec::new();
+        for path in paths {
+            let path = match path.canonicalize() {
+                Ok(path) => path,
+                Err(err) => {
+                    eprintln!("dfrs: {}: {}", path.display(), err);
+                    continue;
+                }
+            };
+
+            if let Some(mnt) = get_best_mount_match(&path, &mnts) {
+                out.push(mnt.clone());
+            }
+        }
+        return Ok(out);
+    }
+
+    mnts.sort_by(cmp_by_capacity_and_dir_name);
+    Ok(mnts)
 }
 
 fn main() {

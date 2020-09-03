@@ -25,9 +25,9 @@ pub struct MountEntry {
 
 impl MountEntry {
     pub fn used_percentage(&self) -> Option<f32> {
-        match &self.capacity {
+        match self.capacity {
             0 => None,
-            _ => Some(100.0 - *&self.free as f32 * 100.0 / *&self.capacity as f32),
+            _ => Some(100.0 - self.free as f32 * 100.0 / self.capacity as f32),
         }
     }
 
@@ -101,7 +101,7 @@ fn parse_mount_line(line: &str) -> Result<MountEntry> {
     ))
 }
 
-pub fn get_mounts(f: File) -> Result<Vec<MountEntry>> {
+pub fn parse_mounts(f: File) -> Result<Vec<MountEntry>> {
     BufReader::new(f)
         .lines()
         .map(|line| {
