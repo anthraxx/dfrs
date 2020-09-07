@@ -22,6 +22,9 @@ use theme::Theme;
 mod mount;
 use mount::*;
 
+mod util;
+use util::bar;
+
 use std::cmp;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -33,65 +36,6 @@ use env_logger::Env;
 use anyhow::Result;
 use colored::*;
 use structopt::StructOpt;
-
-pub fn format_count(num: f64, delimiter: f64) -> String {
-    let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
-    if num < 1_f64 {
-        return format!("{}", num);
-    }
-    let exponent = cmp::min(
-        (num.ln() / delimiter.ln()).floor() as i32,
-        (units.len() - 1) as i32,
-    );
-    let pretty_bytes = format!("{:.*}", 1, num / delimiter.powi(exponent));
-    let unit = units[exponent as usize];
-    format!("{}{}", pretty_bytes, unit)
-}
-
-fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
-    let fill_len_total = (percentage.unwrap_or(0.0) as f32 / 100.0 * width as f32).ceil() as usize;
-    let fill_len_low = std::cmp::min(
-        fill_len_total,
-        (width as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
-    );
-    let fill_len_medium = std::cmp::min(
-        fill_len_total,
-        (width as f32 * theme.threshold_usage_high / 100.0).ceil() as usize,
-    ) - fill_len_low;
-    let fill_len_high = fill_len_total - fill_len_low - fill_len_medium;
-
-    let color_empty = match percentage {
-        Some(_) => theme.color_usage_low,
-        None => theme.color_usage_void,
-    }
-    .unwrap_or(Color::Green);
-
-    let fill_low = theme
-        .char_bar_filled
-        .to_string()
-        .repeat(fill_len_low)
-        .color(theme.color_usage_low.unwrap_or(Color::Green));
-    let fill_medium = theme
-        .char_bar_filled
-        .to_string()
-        .repeat(fill_len_medium)
-        .color(theme.color_usage_medium.unwrap_or(Color::Yellow));
-    let fill_high = theme
-        .char_bar_filled
-        .to_string()
-        .repeat(fill_len_high)
-        .color(theme.color_usage_high.unwrap_or(Color::Red));
-    let empty = theme
-        .char_bar_empty
-        .to_string()
-        .repeat(width - fill_len_total)
-        .color(color_empty);
-
-    format!(
-        "{}{}{}{}{}{}",
-        theme.char_bar_open, fill_low, fill_medium, fill_high, empty, theme.char_bar_close
-    )
-}
 
 #[inline]
 fn column_width<F>(mnt: &[Mount], f: F, heading: &str) -> usize
@@ -105,7 +49,7 @@ where
         .unwrap()
 }
 
-fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
+fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inodes_mode: bool) {
     let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
@@ -120,9 +64,17 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
 
     let fsname_width = column_width(&mnts, |m| m.mnt_fsname.len(), label_fsname);
     let type_width = column_width(&mnts, |m| m.mnt_type.len(), label_type);
-    let available_width = column_width(&mnts, |m| m.free_formatted.len(), label_available);
-    let used_width = column_width(&mnts, |m| m.used_formatted.len(), label_used);
-    let capacity_width = column_width(&mnts, |m| m.capacity_formatted.len(), label_capacity);
+    let available_width = column_width(
+        &mnts,
+        |m| m.free_formatted(delimiter).len(),
+        label_available,
+    );
+    let used_width = column_width(&mnts, |m| m.used_formatted(delimiter).len(), label_used);
+    let capacity_width = column_width(
+        &mnts,
+        |m| m.capacity_formatted(delimiter).len(),
+        label_capacity,
+    );
 
     println!(
         "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
@@ -160,9 +112,9 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, inodes_mode: bool) {
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage(), &theme),
             used_percentage,
-            mnt.free_formatted.color(usage_color),
-            mnt.used_formatted.color(usage_color),
-            mnt.capacity_formatted.color(usage_color),
+            mnt.free_formatted(delimiter).color(usage_color),
+            mnt.used_formatted(delimiter).color(usage_color),
+            mnt.capacity_formatted(delimiter).color(usage_color),
             mnt.mnt_dir,
             fsname_width = fsname_width,
             type_width = type_width,
@@ -209,16 +161,12 @@ fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
 }
 
 #[inline]
-fn calc_total(mnts: &[Mount], delimiter: &NumberFormat) -> Mount {
+fn calc_total(mnts: &[Mount]) -> Mount {
     let mut total = Mount::named("total".to_string());
 
     total.free = mnts.iter().map(|mnt| mnt.free).sum();
     total.used = mnts.iter().map(|mnt| mnt.used).sum();
     total.capacity = mnts.iter().map(|mnt| mnt.capacity).sum();
-
-    total.free_formatted = format_count(total.free as f64, delimiter.get_powers_of());
-    total.used_formatted = format_count(total.used as f64, delimiter.get_powers_of());
-    total.capacity_formatted = format_count(total.capacity as f64, delimiter.get_powers_of());
 
     total
 }
@@ -259,11 +207,11 @@ fn run(args: Args) -> Result<()> {
                 DisplayFilter::from_u8(args.display)
             };
 
-            let mut mnts = get_mounts(&mounts_to_show, &delimiter, args.inodes, &args.paths)?;
+            let mut mnts = get_mounts(&mounts_to_show, args.inodes, &args.paths)?;
             if args.total {
-                mnts.push(calc_total(&mnts, &delimiter));
+                mnts.push(calc_total(&mnts));
             }
-            display_mounts(&mnts, &theme, args.inodes);
+            display_mounts(&mnts, &theme, &delimiter, args.inodes);
         }
     }
 
@@ -272,7 +220,6 @@ fn run(args: Args) -> Result<()> {
 
 fn get_mounts(
     mounts_to_show: &DisplayFilter,
-    delimiter: &NumberFormat,
     show_inodes: bool,
     paths: &Vec<PathBuf>,
 ) -> Result<Vec<Mount>> {
@@ -306,10 +253,6 @@ fn get_mounts(
         mnt.capacity = capacity;
         mnt.free = free;
         mnt.used = capacity - free;
-
-        mnt.capacity_formatted = format_count(mnt.capacity as f64, delimiter.get_powers_of());
-        mnt.free_formatted = format_count(mnt.free as f64, delimiter.get_powers_of());
-        mnt.used_formatted = format_count(mnt.used as f64, delimiter.get_powers_of());
     }
 
     if !paths.is_empty() {

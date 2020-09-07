@@ -1,6 +1,9 @@
 use crate::errors::*;
 
+use crate::args::NumberFormat;
 use crate::theme::Theme;
+use crate::util::format_count;
+
 use colored::Color;
 use std::fs::File;
 use std::io::BufRead;
@@ -17,9 +20,6 @@ pub struct Mount {
     pub capacity: u64,
     pub free: u64,
     pub used: u64,
-    pub capacity_formatted: String,
-    pub free_formatted: String,
-    pub used_formatted: String,
     pub statfs: Option<nix::sys::statfs::Statfs>,
 }
 
@@ -29,6 +29,18 @@ impl Mount {
             0 => None,
             _ => Some(100.0 - self.free as f32 * 100.0 / self.capacity as f32),
         }
+    }
+
+    pub fn capacity_formatted(&self, delimiter: &NumberFormat) -> String {
+        return format_count(self.capacity as f64, delimiter.get_powers_of());
+    }
+
+    pub fn free_formatted(&self, delimiter: &NumberFormat) -> String {
+        return format_count(self.capacity as f64, delimiter.get_powers_of());
+    }
+
+    pub fn used_formatted(&self, delimiter: &NumberFormat) -> String {
+        return format_count(self.used as f64, delimiter.get_powers_of());
     }
 
     pub fn usage_color(&self, theme: &Theme) -> Color {
@@ -63,9 +75,6 @@ impl Mount {
             capacity: 0,
             free: 0,
             used: 0,
-            capacity_formatted: "".to_string(),
-            free_formatted: "".to_string(),
-            used_formatted: "".to_string(),
             statfs: None,
         }
     }
