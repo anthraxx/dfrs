@@ -61,3 +61,17 @@ pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
         theme.char_bar_open, fill_low, fill_medium, fill_high, empty, theme.char_bar_close
     )
 }
+
+pub fn lvm_alias(device: &str) -> Option<String> {
+    if !device.starts_with("/dev/mapper/") {
+        return None;
+    }
+    let device = &device["/dev/mapper/".len()..].replace("--", "$$");
+    if !device.contains("-") {
+        return None;
+    }
+    let mut it = device.splitn(2, "-");
+    let vg = it.next().unwrap_or("");
+    let lv = it.next().unwrap_or("");
+    Some(format!("/dev/{}/{}", vg, lv).replace("$$", "-"))
+}

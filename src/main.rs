@@ -49,7 +49,7 @@ where
         .unwrap()
 }
 
-fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inodes_mode: bool) {
+fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inodes_mode: bool, no_aliases: bool) {
     let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
@@ -62,7 +62,9 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inode
     let label_capacity = if inodes_mode { "Inodes" } else { "Size" };
     let label_mounted = "Mounted on";
 
-    let fsname_width = column_width(&mnts, |m| m.mnt_fsname.len(), label_fsname);
+    let fsname_func = if no_aliases { Mount::fsname } else { Mount::fsname_aliased };
+
+    let fsname_width = column_width(&mnts, |m| fsname_func(m).len(), label_fsname);
     let type_width = column_width(&mnts, |m| m.mnt_type.len(), label_type);
     let available_width = column_width(
         &mnts,
@@ -108,7 +110,7 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inode
 
         println!(
             "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
-            mnt.mnt_fsname,
+            fsname_func(mnt),
             mnt.mnt_type,
             bar(bar_width, mnt.used_percentage(), &theme),
             used_percentage,
@@ -211,7 +213,7 @@ fn run(args: Args) -> Result<()> {
             if args.total {
                 mnts.push(calc_total(&mnts));
             }
-            display_mounts(&mnts, &theme, &delimiter, args.inodes);
+            display_mounts(&mnts, &theme, &delimiter, args.inodes, args.no_aliases);
         }
     }
 

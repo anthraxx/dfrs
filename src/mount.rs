@@ -24,6 +24,15 @@ pub struct Mount {
 }
 
 impl Mount {
+    pub fn fsname(&self) -> String {
+        self.mnt_fsname.clone()
+    }
+
+    pub fn fsname_aliased(&self) -> String {
+        let lvm = lvm_alias(&self.mnt_fsname);
+        lvm.unwrap_or(self.mnt_fsname.clone())
+    }
+
     pub fn used_percentage(&self) -> Option<f32> {
         match self.capacity {
             0 => None,

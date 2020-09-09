@@ -37,7 +37,10 @@ pub struct Args {
     /// Produce and show a grand total
     #[structopt(long)]
     pub total: bool,
-    /// File to get mount information from (e.g. /proc/mounts or /etc/mtab)
+    /// Do not resolve file system shorthand aliases (e.g., LVM)
+    #[structopt(long)]
+    pub no_aliases: bool,
+    /// File to get mount information from
     #[structopt(long, parse(from_os_str), default_value = "/proc/self/mounts")]
     pub mounts: PathBuf,
     /// Verbose logging
