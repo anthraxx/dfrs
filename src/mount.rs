@@ -2,7 +2,7 @@ use crate::errors::*;
 
 use crate::args::NumberFormat;
 use crate::theme::Theme;
-use crate::util::format_count;
+use crate::util::{format_count, lvm_alias};
 
 use colored::Color;
 use std::fs::File;

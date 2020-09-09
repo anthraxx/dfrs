@@ -37,6 +37,9 @@ pub struct Args {
     /// Produce and show a grand total
     #[structopt(long)]
     pub total: bool,
+    /// File to get mount information from (e.g. /proc/mounts or /etc/mtab)
+    #[structopt(long, parse(from_os_str), default_value = "/proc/self/mounts")]
+    pub mounts: PathBuf,
     /// Verbose logging
     #[structopt(short)]
     pub verbose: bool,

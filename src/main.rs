@@ -207,7 +207,7 @@ fn run(args: Args) -> Result<()> {
                 DisplayFilter::from_u8(args.display)
             };
 
-            let mut mnts = get_mounts(&mounts_to_show, args.inodes, &args.paths)?;
+            let mut mnts = get_mounts(&mounts_to_show, args.inodes, &args.paths, &args.mounts)?;
             if args.total {
                 mnts.push(calc_total(&mnts));
             }
@@ -222,8 +222,9 @@ fn get_mounts(
     mounts_to_show: &DisplayFilter,
     show_inodes: bool,
     paths: &Vec<PathBuf>,
+    mounts: &PathBuf,
 ) -> Result<Vec<Mount>> {
-    let f = File::open("/proc/self/mounts")?;
+    let f = File::open(mounts)?;
 
     let mut mnts = parse_mounts(f)?;
     mnts.retain(|mount| {

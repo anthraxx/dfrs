@@ -44,6 +44,9 @@ Show information about the file system on which each _FILE_ resides, or all regu
 *--total*
 	Produce and show a grand total
 
+*--mounts* [_FILE_]
+	File to get mount information from (e.g. /proc/mounts or /etc/mtab)
+
 *-V*, *--version*
 	Prints version information
 
