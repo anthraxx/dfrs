@@ -9,14 +9,14 @@ repository = "https://github.com/anthraxx/dfrs"
 categories = ["command-line-utilities"]
 
 [dependencies]
-nix = "0.17"
+nix = "0.18"
 anyhow = "1.0"
-colored = "1.9"
+colored = "2.0"
 structopt = "0.3"
 log = "0.4"
 env_logger = "0.7"
-strum = "0.18"
-strum_macros = "0.18"
+strum = "0.19"
+strum_macros = "0.19"
 # termcolor = "1.0"
 
 [profile.release]
