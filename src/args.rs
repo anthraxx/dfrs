@@ -37,6 +37,9 @@ pub struct Args {
     /// Produce and show a grand total
     #[structopt(long)]
     pub total: bool,
+    /// Limit listing to local file systems
+    #[structopt(short, long)]
+    pub local: bool,
     /// Do not resolve file system shorthand aliases (e.g., LVM)
     #[structopt(long)]
     pub no_aliases: bool,

@@ -62,6 +62,28 @@ impl Mount {
         .unwrap_or(Color::White)
     }
 
+    pub fn is_local(&self) -> bool {
+        return !self.is_remote();
+    }
+
+    pub fn is_remote(&self) -> bool {
+        return vec![
+            "afs",
+            "cifs",
+            "coda",
+            "ftpfs",
+            "fuse.sshfs",
+            "mfs",
+            "ncpfs",
+            "nfs",
+            "nfs4",
+            "smbfs",
+            "sshfs",
+        ]
+        .iter()
+        .any(|&fstype| self.mnt_type.eq(fstype));
+    }
+
     pub fn named(name: String) -> Mount {
         Mount::new(name, "-".to_string(), "-".to_string(), "".to_string(), 0, 0)
     }

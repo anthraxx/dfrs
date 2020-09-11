@@ -33,6 +33,7 @@ use nix::sys::statfs;
 
 use env_logger::Env;
 
+use crate::mount::Mount;
 use anyhow::Result;
 use colored::*;
 use structopt::StructOpt;
@@ -49,7 +50,13 @@ where
         .unwrap()
 }
 
-fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inodes_mode: bool, no_aliases: bool) {
+fn display_mounts(
+    mnts: &[Mount],
+    theme: &Theme,
+    delimiter: &NumberFormat,
+    inodes_mode: bool,
+    no_aliases: bool,
+) {
     let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
@@ -62,7 +69,11 @@ fn display_mounts(mnts: &[Mount], theme: &Theme, delimiter: &NumberFormat, inode
     let label_capacity = if inodes_mode { "Inodes" } else { "Size" };
     let label_mounted = "Mounted on";
 
-    let fsname_func = if no_aliases { Mount::fsname } else { Mount::fsname_aliased };
+    let fsname_func = if no_aliases {
+        Mount::fsname
+    } else {
+        Mount::fsname_aliased
+    };
 
     let fsname_width = column_width(&mnts, |m| fsname_func(m).len(), label_fsname);
     let type_width = column_width(&mnts, |m| m.mnt_type.len(), label_type);
@@ -209,7 +220,13 @@ fn run(args: Args) -> Result<()> {
                 DisplayFilter::from_u8(args.display)
             };
 
-            let mut mnts = get_mounts(&mounts_to_show, args.inodes, &args.paths, &args.mounts)?;
+            let mut mnts = get_mounts(
+                &mounts_to_show,
+                args.inodes,
+                &args.paths,
+                &args.mounts,
+                args.local,
+            )?;
             if args.total {
                 mnts.push(calc_total(&mnts));
             }
@@ -225,6 +242,7 @@ fn get_mounts(
     show_inodes: bool,
     paths: &Vec<PathBuf>,
     mounts: &PathBuf,
+    local_only: bool,
 ) -> Result<Vec<Mount>> {
     let f = File::open(mounts)?;
 
@@ -235,6 +253,9 @@ fn get_mounts(
             .iter()
             .any(|fsname| mnt_matches_filter(mount, fsname))
     });
+    if local_only {
+        mnts.retain(Mount::is_local);
+    }
 
     for mnt in &mut mnts {
         mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();

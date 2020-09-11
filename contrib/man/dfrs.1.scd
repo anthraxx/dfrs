@@ -44,6 +44,9 @@ Show information about the file system on which each _FILE_ resides, or all regu
 *--total*
 	Produce and show a grand total
 
+*-l*, *--local*
+	Limit listing to local file systems
+
 *--no-aliases*
 	Do not resolve file system shorthand aliases (e.g., LVM)
 
