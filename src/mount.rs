@@ -45,7 +45,7 @@ impl Mount {
     }
 
     pub fn free_formatted(&self, delimiter: &NumberFormat) -> String {
-        return format_count(self.capacity as f64, delimiter.get_powers_of());
+        return format_count(self.free as f64, delimiter.get_powers_of());
     }
 
     pub fn used_formatted(&self, delimiter: &NumberFormat) -> String {
