@@ -11,7 +11,7 @@ pub fn format_count(num: f64, delimiter: f64) -> String {
         return format!("{}", num);
     }
     let exponent = cmp::min(
-        (num.ln() / delimiter.ln()).floor() as i32,
+        num.log(delimiter).floor() as i32,
         (units.len() - 1) as i32,
     );
     let pretty_bytes = format!("{:.*}", 1, num / delimiter.powi(exponent));
@@ -69,10 +69,10 @@ pub fn lvm_alias(device: &str) -> Option<String> {
         return None;
     }
     let device = &device["/dev/mapper/".len()..].replace("--", "$$");
-    if !device.contains("-") {
+    if !device.contains('-') {
         return None;
     }
-    let mut it = device.splitn(2, "-");
+    let mut it = device.splitn(2, '-');
     let vg = it.next().unwrap_or("");
     let lv = it.next().unwrap_or("");
     Some(format!("/dev/{}/{}", vg, lv).replace("$$", "-"))
@@ -82,7 +82,7 @@ pub fn lvm_alias(device: &str) -> Option<String> {
 pub fn get_best_mount_match<'a>(path: &Path, mnts: &'a [Mount]) -> Option<&'a Mount> {
     let scores = mnts
         .iter()
-        .map(|mnt| (calculate_path_match_score(path, &mnt), mnt));
+        .map(|mnt| (calculate_path_match_score(path, mnt), mnt));
     let best = scores.max_by_key(|x| x.0)?;
     Some(best.1)
 }
