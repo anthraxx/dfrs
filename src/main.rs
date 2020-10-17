@@ -25,9 +25,8 @@ use mount::*;
 mod util;
 use util::bar;
 
-use std::cmp;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use nix::sys::statfs;
 
@@ -138,52 +137,6 @@ fn display_mounts(
     }
 }
 
-#[inline]
-fn get_best_mount_match<'a>(path: &Path, mnts: &'a [Mount]) -> Option<&'a Mount> {
-    let scores = mnts
-        .iter()
-        .map(|mnt| (calculate_path_match_score(path, &mnt), mnt));
-    let best = scores.max_by_key(|x| x.0)?;
-    Some(best.1)
-}
-
-#[inline]
-fn calculate_path_match_score(path: &Path, mnt: &Mount) -> usize {
-    if path.starts_with(&mnt.mnt_dir) {
-        mnt.mnt_dir.len()
-    } else {
-        0
-    }
-}
-
-#[inline]
-fn cmp_by_capacity_and_dir_name(a: &Mount, b: &Mount) -> cmp::Ordering {
-    u64::min(1, a.capacity)
-        .cmp(&u64::min(1, b.capacity))
-        .reverse()
-        .then(a.mnt_dir.cmp(&b.mnt_dir))
-}
-
-#[inline]
-fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
-    if filter.ends_with('*') {
-        mnt.mnt_fsname.starts_with(&filter[..filter.len() - 1])
-    } else {
-        mnt.mnt_fsname == filter
-    }
-}
-
-#[inline]
-fn calc_total(mnts: &[Mount]) -> Mount {
-    let mut total = Mount::named("total".to_string());
-
-    total.free = mnts.iter().map(|mnt| mnt.free).sum();
-    total.used = mnts.iter().map(|mnt| mnt.used).sum();
-    total.capacity = mnts.iter().map(|mnt| mnt.capacity).sum();
-
-    total
-}
-
 fn run(args: Args) -> Result<()> {
     if let Some(color) = args.color {
         debug!("Bypass tty detection for colors: {:?}", color);
@@ -228,7 +181,7 @@ fn run(args: Args) -> Result<()> {
                 args.local,
             )?;
             if args.total {
-                mnts.push(calc_total(&mnts));
+                mnts.push(util::calc_total(&mnts));
             }
             display_mounts(&mnts, &theme, &delimiter, args.inodes, args.no_aliases);
         }
@@ -251,7 +204,7 @@ fn get_mounts(
         mounts_to_show
             .get_mnt_fsname_filter()
             .iter()
-            .any(|fsname| mnt_matches_filter(mount, fsname))
+            .any(|fsname| util::mnt_matches_filter(mount, fsname))
     });
     if local_only {
         mnts.retain(Mount::is_local);
@@ -290,14 +243,14 @@ fn get_mounts(
                 }
             };
 
-            if let Some(mnt) = get_best_mount_match(&path, &mnts) {
+            if let Some(mnt) = util::get_best_mount_match(&path, &mnts) {
                 out.push(mnt.clone());
             }
         }
         return Ok(out);
     }
 
-    mnts.sort_by(cmp_by_capacity_and_dir_name);
+    mnts.sort_by(util::cmp_by_capacity_and_dir_name);
     Ok(mnts)
 }
 

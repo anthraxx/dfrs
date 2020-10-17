@@ -1,7 +1,9 @@
+use crate::mount::Mount;
 use crate::theme::Theme;
 
 use colored::*;
 use std::cmp;
+use std::path::Path;
 
 pub fn format_count(num: f64, delimiter: f64) -> String {
     let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
@@ -76,9 +78,56 @@ pub fn lvm_alias(device: &str) -> Option<String> {
     Some(format!("/dev/{}/{}", vg, lv).replace("$$", "-"))
 }
 
+#[inline]
+pub fn get_best_mount_match<'a>(path: &Path, mnts: &'a [Mount]) -> Option<&'a Mount> {
+    let scores = mnts
+        .iter()
+        .map(|mnt| (calculate_path_match_score(path, &mnt), mnt));
+    let best = scores.max_by_key(|x| x.0)?;
+    Some(best.1)
+}
+
+#[inline]
+pub fn calculate_path_match_score(path: &Path, mnt: &Mount) -> usize {
+    if path.starts_with(&mnt.mnt_dir) {
+        mnt.mnt_dir.len()
+    } else {
+        0
+    }
+}
+
+#[inline]
+pub fn cmp_by_capacity_and_dir_name(a: &Mount, b: &Mount) -> cmp::Ordering {
+    u64::min(1, a.capacity)
+        .cmp(&u64::min(1, b.capacity))
+        .reverse()
+        .then(a.mnt_dir.cmp(&b.mnt_dir))
+}
+
+#[inline]
+pub fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
+    if filter.ends_with('*') {
+        mnt.mnt_fsname.starts_with(&filter[..filter.len() - 1])
+    } else {
+        mnt.mnt_fsname == filter
+    }
+}
+
+#[inline]
+pub fn calc_total(mnts: &[Mount]) -> Mount {
+    let mut total = Mount::named("total".to_string());
+
+    total.free = mnts.iter().map(|mnt| mnt.free).sum();
+    total.used = mnts.iter().map(|mnt| mnt.used).sum();
+    total.capacity = mnts.iter().map(|mnt| mnt.capacity).sum();
+
+    total
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn format_count_zero() {
@@ -138,5 +187,142 @@ mod tests {
     fn lvm_alias_five_dashes() {
         let s = lvm_alias("/dev/mapper/crypto-----foo");
         assert_eq!(s, Some("/dev/crypto--/foo".to_string()));
+    }
+
+    #[test]
+    fn get_best_mount_match_simple() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.mnt_dir = "/a".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.mnt_dir = "/a/b".to_string();
+        let mut mnt3 = Mount::named("fizz".into());
+        mnt3.mnt_dir = "/a/b/c".to_string();
+        let mut mnt4 = Mount::named("buzz".into());
+        mnt4.mnt_dir = "/a/b/c/d".to_string();
+
+        let mnts = &[mnt1, mnt2, mnt3, mnt4];
+        let matched = get_best_mount_match(&PathBuf::from("/a/b/c"), mnts).unwrap();
+        assert_eq!(matched.mnt_dir, "/a/b/c");
+    }
+
+    #[test]
+    fn calculate_path_match_score_simple() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.mnt_dir = "/a/s/d".to_string();
+        let score = calculate_path_match_score(&PathBuf::from("/a/s/d/f"), &mnt1);
+        assert_eq!(score, 6);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_equal() {
+        let mnt1 = Mount::named("foo".into());
+        let mnt2 = Mount::named("bar".into());
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_greater_capacity_greater_name() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.capacity = 123;
+        mnt1.mnt_dir = "/b".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.capacity = 64;
+        mnt2.mnt_dir = "/a".to_string();
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Greater);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_smaller_capacity_greater_name() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.capacity = 64;
+        mnt1.mnt_dir = "/b".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.capacity = 123;
+        mnt2.mnt_dir = "/a".to_string();
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Greater);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_greater_capacity_smaller_name() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.capacity = 123;
+        mnt1.mnt_dir = "/a".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.capacity = 64;
+        mnt2.mnt_dir = "/b".to_string();
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Less);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_smaller_capacity_smaller_name() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.capacity = 64;
+        mnt1.mnt_dir = "/a".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.capacity = 123;
+        mnt2.mnt_dir = "/b".to_string();
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Less);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_equal_capacity_greater_name() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.capacity = 123;
+        mnt1.mnt_dir = "/b".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.capacity = 123;
+        mnt2.mnt_dir = "/a".to_string();
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Greater);
+    }
+
+    #[test]
+    fn cmp_by_capacity_and_dir_name_greater_capacity_equal_name() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.capacity = 123;
+        mnt1.mnt_dir = "/a".to_string();
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.capacity = 64;
+        mnt2.mnt_dir = "/a".to_string();
+
+        let ord = cmp_by_capacity_and_dir_name(&mnt1, &mnt2);
+        assert_eq!(ord, cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn calc_total_simple() {
+        let mut mnt1 = Mount::named("foo".into());
+        mnt1.free = 123;
+        mnt1.used = 456;
+        mnt1.capacity = 123 + 456;
+        let mut mnt2 = Mount::named("bar".into());
+        mnt2.free = 678;
+        mnt2.used = 9123;
+        mnt2.capacity = 678 + 9123;
+        let mut mnt3 = Mount::named("fizz".into());
+        mnt3.free = 4567;
+        mnt3.used = 0;
+        mnt3.capacity = 4567;
+        let mut mnt4 = Mount::named("buzz".into());
+        mnt4.free = 0;
+        mnt4.used = 890123;
+        mnt4.capacity = 890123;
+
+        let total = calc_total(&[mnt1, mnt2, mnt3, mnt4]);
+        assert_eq!(total.mnt_fsname, "total");
+        assert_eq!(total.free, 5368);
+        assert_eq!(total.used, 899702);
+        assert_eq!(total.capacity, 5368 + 899702);
     }
 }
