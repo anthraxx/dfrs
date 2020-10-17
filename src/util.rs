@@ -75,3 +75,68 @@ pub fn lvm_alias(device: &str) -> Option<String> {
     let lv = it.next().unwrap_or("");
     Some(format!("/dev/{}/{}", vg, lv).replace("$$", "-"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_count_zero() {
+        let s = format_count(0.0, 1024.0);
+        assert_eq!(s, "0");
+    }
+
+    #[test]
+    fn format_count_bytes() {
+        let s = format_count(12.0, 1024.0);
+        assert_eq!(s, "12.0B");
+    }
+
+    #[test]
+    fn format_count_megabyte() {
+        let s = format_count(12693000.0, 1024.0);
+        assert_eq!(s, "12.1M");
+    }
+
+    #[test]
+    fn format_count_very_large() {
+        let s = format_count(2535301200456458802993406410752.0, 1024.0);
+        assert_eq!(s, "2097152.0Y");
+    }
+
+    #[test]
+    fn lvm_alias_none() {
+        let s = lvm_alias("/dev/mapper/crypto");
+        assert_eq!(s, None);
+    }
+
+    #[test]
+    fn lvm_alias_simple() {
+        let s = lvm_alias("/dev/mapper/crypto-foo");
+        assert_eq!(s, Some("/dev/crypto/foo".to_string()));
+    }
+
+    #[test]
+    fn lvm_alias_two_dashes() {
+        let s = lvm_alias("/dev/mapper/crypto--foo");
+        assert_eq!(s, None);
+    }
+
+    #[test]
+    fn lvm_alias_three_dashes() {
+        let s = lvm_alias("/dev/mapper/crypto---foo");
+        assert_eq!(s, Some("/dev/crypto-/foo".to_string()));
+    }
+
+    #[test]
+    fn lvm_alias_four_dashes() {
+        let s = lvm_alias("/dev/mapper/crypto----foo");
+        assert_eq!(s, None);
+    }
+
+    #[test]
+    fn lvm_alias_five_dashes() {
+        let s = lvm_alias("/dev/mapper/crypto-----foo");
+        assert_eq!(s, Some("/dev/crypto--/foo".to_string()));
+    }
+}
