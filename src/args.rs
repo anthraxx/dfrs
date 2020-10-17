@@ -79,19 +79,19 @@ pub enum DisplayFilter {
 }
 
 impl DisplayFilter {
-    pub fn from_u8(n: u8) -> DisplayFilter {
+    pub const fn from_u8(n: u8) -> Self {
         match n {
-            0 => DisplayFilter::Minimal,
-            1 => DisplayFilter::More,
-            _ => DisplayFilter::All,
+            0 => Self::Minimal,
+            1 => Self::More,
+            _ => Self::All,
         }
     }
 
     pub fn get_mnt_fsname_filter(&self) -> Vec<&'static str> {
         match self {
-            DisplayFilter::Minimal => vec!["/dev*", "storage"],
-            DisplayFilter::More => vec!["dev", "run", "tmpfs", "/dev*", "storage"],
-            DisplayFilter::All => vec!["*"],
+            Self::Minimal => vec!["/dev*", "storage"],
+            Self::More => vec!["dev", "run", "tmpfs", "/dev*", "storage"],
+            Self::All => vec!["*"],
         }
     }
 }
@@ -103,10 +103,10 @@ pub enum NumberFormat {
 }
 
 impl NumberFormat {
-    pub fn get_powers_of(&self) -> f64 {
+    pub const fn get_powers_of(&self) -> f64 {
         match self {
-            NumberFormat::Base10 => 1000_f64,
-            NumberFormat::Base2 => 1024_f64,
+            Self::Base10 => 1000_f64,
+            Self::Base2 => 1024_f64,
         }
     }
 }

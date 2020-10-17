@@ -1,11 +1,7 @@
 #![deny(
-    clippy::all,
-    clippy::restriction,
     clippy::nursery,
-    clippy::pedantic,
     clippy::cargo
 )]
-#![allow(clippy::print_stdout)]
 extern crate anyhow;
 extern crate strum;
 extern crate strum_macros;
@@ -74,16 +70,16 @@ fn display_mounts(
         Mount::fsname_aliased
     };
 
-    let fsname_width = column_width(&mnts, |m| fsname_func(m).len(), label_fsname);
-    let type_width = column_width(&mnts, |m| m.mnt_type.len(), label_type);
+    let fsname_width = column_width(mnts, |m| fsname_func(m).len(), label_fsname);
+    let type_width = column_width(mnts, |m| m.mnt_type.len(), label_type);
     let available_width = column_width(
-        &mnts,
+        mnts,
         |m| m.free_formatted(delimiter).len(),
         label_available,
     );
-    let used_width = column_width(&mnts, |m| m.used_formatted(delimiter).len(), label_used);
+    let used_width = column_width(mnts, |m| m.used_formatted(delimiter).len(), label_used);
     let capacity_width = column_width(
-        &mnts,
+        mnts,
         |m| m.capacity_formatted(delimiter).len(),
         label_capacity,
     );
@@ -106,7 +102,7 @@ fn display_mounts(
         capacity_width = capacity_width,
     );
     for mnt in mnts {
-        let usage_color = mnt.usage_color(&theme);
+        let usage_color = mnt.usage_color(theme);
 
         let used_percentage = match mnt.used_percentage() {
             Some(percentage) => format!(
@@ -122,7 +118,7 @@ fn display_mounts(
             "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
             fsname_func(mnt),
             mnt.mnt_type,
-            bar(bar_width, mnt.used_percentage(), &theme),
+            bar(bar_width, mnt.used_percentage(), theme),
             used_percentage,
             mnt.free_formatted(delimiter).color(usage_color),
             mnt.used_formatted(delimiter).color(usage_color),
@@ -193,7 +189,7 @@ fn run(args: Args) -> Result<()> {
 fn get_mounts(
     mounts_to_show: &DisplayFilter,
     show_inodes: bool,
-    paths: &Vec<PathBuf>,
+    paths: &[PathBuf],
     mounts: &PathBuf,
     local_only: bool,
 ) -> Result<Vec<Mount>> {

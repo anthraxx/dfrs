@@ -15,8 +15,8 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub fn new() -> Theme {
-        Theme {
+    pub fn new() -> Self {
+        Self {
             char_bar_filled: named_char::HEAVY_BOX,
             char_bar_empty: named_char::HEAVY_DOUBLE_DASH,
             char_bar_open: "".to_string(),

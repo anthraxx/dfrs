@@ -30,7 +30,7 @@ impl Mount {
 
     pub fn fsname_aliased(&self) -> String {
         let lvm = lvm_alias(&self.mnt_fsname);
-        lvm.unwrap_or(self.mnt_fsname.clone())
+        lvm.unwrap_or_else(|| self.mnt_fsname.clone())
     }
 
     pub fn used_percentage(&self) -> Option<f32> {
@@ -41,15 +41,15 @@ impl Mount {
     }
 
     pub fn capacity_formatted(&self, delimiter: &NumberFormat) -> String {
-        return format_count(self.capacity as f64, delimiter.get_powers_of());
+        format_count(self.capacity as f64, delimiter.get_powers_of())
     }
 
     pub fn free_formatted(&self, delimiter: &NumberFormat) -> String {
-        return format_count(self.free as f64, delimiter.get_powers_of());
+        format_count(self.free as f64, delimiter.get_powers_of())
     }
 
     pub fn used_formatted(&self, delimiter: &NumberFormat) -> String {
-        return format_count(self.used as f64, delimiter.get_powers_of());
+        format_count(self.used as f64, delimiter.get_powers_of())
     }
 
     pub fn usage_color(&self, theme: &Theme) -> Color {
@@ -83,19 +83,19 @@ impl Mount {
         ].contains(&self.mnt_type.as_str())
     }
 
-    pub fn named(name: String) -> Mount {
-        Mount::new(name, "-".to_string(), "-".to_string(), "".to_string(), 0, 0)
+    pub fn named(name: String) -> Self {
+        Self::new(name, "-".to_string(), "-".to_string(), "".to_string(), 0, 0)
     }
 
-    fn new(
+    const fn new(
         mnt_fsname: String,
         mnt_dir: String,
         mnt_type: String,
         mnt_opts: String,
         mnt_freq: i32,
         mnt_passno: i32,
-    ) -> Mount {
-        Mount {
+    ) -> Self {
+        Self {
             mnt_fsname,
             mnt_dir,
             mnt_type,
