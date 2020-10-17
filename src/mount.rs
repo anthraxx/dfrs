@@ -62,12 +62,13 @@ impl Mount {
         .unwrap_or(Color::White)
     }
 
+    #[inline]
     pub fn is_local(&self) -> bool {
-        return !self.is_remote();
+        !self.is_remote()
     }
 
     pub fn is_remote(&self) -> bool {
-        return vec![
+        [
             "afs",
             "cifs",
             "coda",
@@ -79,9 +80,7 @@ impl Mount {
             "nfs4",
             "smbfs",
             "sshfs",
-        ]
-        .iter()
-        .any(|&fstype| self.mnt_type.eq(fstype));
+        ].contains(&self.mnt_type.as_str())
     }
 
     pub fn named(name: String) -> Mount {
@@ -150,4 +149,62 @@ pub fn parse_mounts(f: File) -> Result<Vec<Mount>> {
                 .map_err(Error::from)
         })
         .collect::<Result<Vec<_>>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_mounts() {
+        let file = r#"sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime,hidepid=2 0 0
+udev /dev devtmpfs rw,nosuid,relatime,size=2009144k,nr_inodes=502286,mode=755 0 0
+devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
+tmpfs /run tmpfs rw,nosuid,noexec,relatime,size=402800k,mode=755 0 0
+/dev/mapper/vg0-root / ext4 rw,relatime,errors=remount-ro 0 0
+tmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
+pstore /sys/fs/pstore pstore rw,relatime 0 0
+configfs /sys/kernel/config configfs rw,relatime 0 0
+tmpfs /run/shm tmpfs rw,nosuid,nodev,noexec,relatime,size=805580k 0 0
+/dev/mapper/vg0-boot /boot ext4 rw,relatime 0 0
+/dev/mapper/vg0-tmp /tmp ext4 rw,relatime 0 0
+none /cgroup2 cgroup2 rw,relatime 0 0
+"#;
+        let mounts = file.lines()
+            .map(|line| {
+                parse_mount_line(&line)
+                    .context("Failed to parse mount line")
+                    .map_err(Error::from)
+            })
+            .collect::<Result<Vec<_>>>().unwrap();
+        assert_eq!(mounts.len(), 13);
+
+        // nix::sys::statfs::Statfs doesn't have PartialEq
+        let mnt = &mounts[0];
+        assert_eq!(mnt.mnt_fsname.as_str(), "sysfs");
+        assert_eq!(mnt.mnt_dir.as_str(), "/sys");
+        assert_eq!(mnt.mnt_type.as_str(), "sysfs");
+        assert_eq!(mnt.mnt_opts.as_str(), "rw,nosuid,nodev,noexec,relatime");
+        assert_eq!(mnt.mnt_freq, 0);
+        assert_eq!(mnt.mnt_passno, 0);
+        assert_eq!(mnt.capacity, 0);
+        assert_eq!(mnt.free, 0);
+        assert_eq!(mnt.used, 0);
+        assert!(mnt.statfs.is_none());
+    }
+
+    #[test]
+    fn is_remote() {
+        let mut mnt = Mount::named("foo".into());
+        mnt.mnt_type = String::from("nfs");
+        assert!(mnt.is_remote());
+    }
+
+    #[test]
+    fn is_local() {
+        let mut mnt = Mount::named("foo".into());
+        mnt.mnt_type = String::from("btrfs");
+        assert!(mnt.is_local());
+    }
 }
