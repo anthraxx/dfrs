@@ -1,0 +1,44 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+        - x86_64-unknown-linux-gnu
+        - i686-unknown-linux-musl
+        - armv5te-unknown-linux-gnueabi
+        - armv7-unknown-linux-gnueabihf
+        - aarch64-unknown-linux-gnu
+        - powerpc64le-unknown-linux-gnu
+        - mipsel-unknown-linux-gnu
+        - mips64el-unknown-linux-gnuabi64
+        - s390x-unknown-linux-gnu
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.arch }}
+        override: true
+    - uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --target ${{ matrix.arch }}
+    - uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: test
+        args: --target ${{ matrix.arch }}
