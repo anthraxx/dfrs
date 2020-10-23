@@ -19,11 +19,11 @@ Without any argument, size is displayed in human-readable format.
 
     pacman -S dfrs
 
-### Debian sid
+### Debian sid/bullseye
 
     apt install dfrs
 
-### Alpine (testing, edge)
+### Alpine (edge, 3.13)
 
     apk add dfrs
 
