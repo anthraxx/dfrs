@@ -80,7 +80,8 @@ impl Mount {
             "nfs4",
             "smbfs",
             "sshfs",
-        ].contains(&self.mnt_type.as_str())
+        ]
+        .contains(&self.mnt_type.as_str())
     }
 
     pub fn named(name: String) -> Self {
@@ -171,13 +172,15 @@ tmpfs /run/shm tmpfs rw,nosuid,nodev,noexec,relatime,size=805580k 0 0
 /dev/mapper/vg0-tmp /tmp ext4 rw,relatime 0 0
 none /cgroup2 cgroup2 rw,relatime 0 0
 "#;
-        let mounts = file.lines()
+        let mounts = file
+            .lines()
             .map(|line| {
                 parse_mount_line(&line)
                     .context("Failed to parse mount line")
                     .map_err(Error::from)
             })
-            .collect::<Result<Vec<_>>>().unwrap();
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
         assert_eq!(mounts.len(), 13);
 
         // nix::sys::statfs::Statfs doesn't have PartialEq

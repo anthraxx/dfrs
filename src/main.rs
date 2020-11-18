@@ -1,7 +1,4 @@
-#![deny(
-    clippy::nursery,
-    clippy::cargo
-)]
+#![deny(clippy::nursery, clippy::cargo)]
 extern crate anyhow;
 extern crate strum;
 extern crate strum_macros;
@@ -72,11 +69,8 @@ fn display_mounts(
 
     let fsname_width = column_width(mnts, |m| fsname_func(m).len(), label_fsname);
     let type_width = column_width(mnts, |m| m.mnt_type.len(), label_type);
-    let available_width = column_width(
-        mnts,
-        |m| m.free_formatted(delimiter).len(),
-        label_available,
-    );
+    let available_width =
+        column_width(mnts, |m| m.free_formatted(delimiter).len(), label_available);
     let used_width = column_width(mnts, |m| m.used_formatted(delimiter).len(), label_used);
     let capacity_width = column_width(
         mnts,

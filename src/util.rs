@@ -10,10 +10,7 @@ pub fn format_count(num: f64, delimiter: f64) -> String {
     if num < 1_f64 {
         return format!("{}", num);
     }
-    let exponent = cmp::min(
-        num.log(delimiter).floor() as i32,
-        (units.len() - 1) as i32,
-    );
+    let exponent = cmp::min(num.log(delimiter).floor() as i32, (units.len() - 1) as i32);
     let pretty_bytes = format!("{:.*}", 1, num / delimiter.powi(exponent));
     let unit = units[exponent as usize];
     format!("{}{}", pretty_bytes, unit)
@@ -106,8 +103,8 @@ pub fn cmp_by_capacity_and_dir_name(a: &Mount, b: &Mount) -> cmp::Ordering {
 
 #[inline]
 pub fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
-    if filter.ends_with('*') {
-        mnt.mnt_fsname.starts_with(&filter[..filter.len() - 1])
+    if let Some(start) = filter.strip_suffix('*') {
+        mnt.mnt_fsname.starts_with(start)
     } else {
         mnt.mnt_fsname == filter
     }
