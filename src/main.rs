@@ -19,6 +19,7 @@ mod util;
 use util::bar;
 
 use std::fs::File;
+use std::path::Path;
 use std::path::PathBuf;
 
 use nix::sys::statfs;
@@ -184,7 +185,7 @@ fn get_mounts(
     mounts_to_show: &DisplayFilter,
     show_inodes: bool,
     paths: &[PathBuf],
-    mounts: &PathBuf,
+    mounts: &Path,
     local_only: bool,
 ) -> Result<Vec<Mount>> {
     let f = File::open(mounts)?;
