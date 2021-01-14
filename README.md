@@ -2,6 +2,7 @@
 
 ![Build Status](https://img.shields.io/github/workflow/status/anthraxx/dfrs/CI) ![Latest release](https://img.shields.io/github/v/release/anthraxx/dfrs) [![crates.io version](https://img.shields.io/crates/v/dfrs.svg)](https://crates.io/crates/dfrs) ![License](https://img.shields.io/github/license/anthraxx/dfrs)
 
+Display file system space usage using graphs and colors
 
 ![](contrib/screenshot.png)
 
