@@ -1,5 +1,8 @@
 # dfrs
 
+![Build Status](https://img.shields.io/github/workflow/status/anthraxx/dfrs/CI) ![Latest release](https://img.shields.io/github/v/release/anthraxx/dfrs) [![crates.io version](https://img.shields.io/crates/v/dfrs.svg)](https://crates.io/crates/dfrs) ![License](https://img.shields.io/github/license/anthraxx/dfrs)
+
+
 ![](contrib/screenshot.png)
 
 *dfrs* displays the amount of disk space available on the file system
