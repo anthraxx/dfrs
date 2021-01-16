@@ -12,6 +12,7 @@ pub struct Theme {
     pub color_usage_medium: Option<Color>,
     pub color_usage_high: Option<Color>,
     pub color_usage_void: Option<Color>,
+    pub bar_width: usize,
 }
 
 impl Theme {
@@ -28,6 +29,7 @@ impl Theme {
             color_usage_medium: Some(Color::Yellow),
             color_usage_high: Some(Color::Red),
             color_usage_void: Some(Color::Blue),
+            bar_width: 20,
         }
     }
 }

@@ -50,7 +50,6 @@ fn display_mounts(
     inodes_mode: bool,
     no_aliases: bool,
 ) {
-    let bar_width = 20;
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
     let label_fsname = "Filesystem";
@@ -91,7 +90,7 @@ fn display_mounts(
         label_mounted.color(color_heading),
         fsname_width = fsname_width,
         type_width = type_width,
-        bar_width = bar_width,
+        bar_width = theme.bar_width,
         used_width = used_width,
         available_width = available_width,
         capacity_width = capacity_width,
@@ -113,7 +112,7 @@ fn display_mounts(
             "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
             fsname_func(mnt),
             mnt.mnt_type,
-            bar(bar_width, mnt.used_percentage(), theme),
+            bar(theme.bar_width, mnt.used_percentage(), theme),
             used_percentage,
             mnt.free_formatted(delimiter).color(usage_color),
             mnt.used_formatted(delimiter).color(usage_color),
