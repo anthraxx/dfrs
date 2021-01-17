@@ -28,6 +28,7 @@ use nix::sys::statfs;
 use env_logger::Env;
 
 use crate::mount::Mount;
+use crate::util::format_percentage;
 use anyhow::Result;
 use colored::*;
 use std::io::{stdout, Write};
@@ -146,25 +147,8 @@ fn display_mounts(
     for mnt in mnts {
         let usage_color = mnt.usage_color(theme);
 
-        let used_percentage = match mnt.used_percentage() {
-            Some(percentage) => format!(
-                "{:>5.1}{}",
-                (percentage * 10.0).round() / 10.0,
-                "%".color(Color::White)
-            ),
-            None => format!("{:>6}", "-"),
-        }
-        .color(usage_color);
-
-        let available_percentage = match mnt.free_percentage() {
-            Some(percentage) => format!(
-                "{:>5.1}{}",
-                (percentage * 10.0).round() / 10.0,
-                "%".color(Color::White)
-            ),
-            None => format!("{:>6}", "-"),
-        }
-        .color(usage_color);
+        let used_percentage = format_percentage(mnt.used_percentage()).color(usage_color);
+        let available_percentage = format_percentage(mnt.free_percentage()).color(usage_color);
 
         line.clear();
         for column in &theme.columns {

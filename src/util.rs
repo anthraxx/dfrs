@@ -18,6 +18,18 @@ pub fn format_count(num: f64, delimiter: f64) -> String {
     format!("{}{}", pretty_bytes, unit)
 }
 
+#[inline]
+pub fn format_percentage(percentage: Option<f32>) -> String {
+    match percentage {
+        Some(percentage) => format!(
+            "{:>5.1}{}",
+            (percentage * 10.0).round() / 10.0,
+            "%".color(Color::White)
+        ),
+        None => format!("{:>6}", "-"),
+    }
+}
+
 pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
     let fill_len_total = (percentage.unwrap_or(0.0) as f32 / 100.0 * width as f32).ceil() as usize;
     let fill_len_low = std::cmp::min(
@@ -166,6 +178,30 @@ mod tests {
     fn format_count_very_large() {
         let s = format_count(2535301200456458802993406410752.0, 1024.0);
         assert_eq!(s, "2097152.0Y");
+    }
+
+    #[test]
+    fn format_percentage_zero() {
+        let s = format_percentage(Option::Some(0f32));
+        assert_eq!(s, format!("  0.0{}", "%".color(Color::White)));
+    }
+
+    #[test]
+    fn format_percentage_fraction() {
+        let s = format_percentage(Option::Some(0.3333333333333333f32));
+        assert_eq!(s, format!("  0.3{}", "%".color(Color::White)));
+    }
+
+    #[test]
+    fn format_percentage_hundred() {
+        let s = format_percentage(Option::Some(100f32));
+        assert_eq!(s, format!("100.0{}", "%".color(Color::White)));
+    }
+
+    #[test]
+    fn format_percentage_none() {
+        let s = format_percentage(Option::None);
+        assert_eq!(s, "     -");
     }
 
     #[test]
