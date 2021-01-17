@@ -156,6 +156,16 @@ fn display_mounts(
         }
         .color(usage_color);
 
+        let available_percentage = match mnt.free_percentage() {
+            Some(percentage) => format!(
+                "{:>5.1}{}",
+                (percentage * 10.0).round() / 10.0,
+                "%".color(Color::White)
+            ),
+            None => format!("{:>6}", "-"),
+        }
+        .color(usage_color);
+
         line.clear();
         for column in &theme.columns {
             match column {
@@ -202,7 +212,9 @@ fn display_mounts(
                         .as_str(),
                     );
                 }
-                ColumnType::AvailablePercentage => {}
+                ColumnType::AvailablePercentage => {
+                    line.push_str(format!("{} ", available_percentage).as_str());
+                }
                 ColumnType::Capacity => {
                     line.push_str(
                         format!(

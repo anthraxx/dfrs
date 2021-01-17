@@ -40,6 +40,13 @@ impl Mount {
         }
     }
 
+    pub fn free_percentage(&self) -> Option<f32> {
+        match self.free {
+            0 => None,
+            _ => Some(self.free as f32 * 100.0 / self.capacity as f32),
+        }
+    }
+
     pub fn capacity_formatted(&self, delimiter: &NumberFormat) -> String {
         format_count(self.capacity as f64, delimiter.get_powers_of())
     }
