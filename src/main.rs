@@ -52,49 +52,93 @@ fn display_mounts(
 ) {
     let color_heading = theme.color_heading.unwrap_or(Color::White);
 
-    let label_fsname = "Filesystem";
-    let label_type = "Type";
-    let label_bar = "";
-    let label_used_percentage = "Used%";
-    let label_available = "Avail";
-    let label_used = "Used";
-    let label_capacity = if inodes_mode { "Inodes" } else { "Size" };
-    let label_mounted = "Mounted on";
-
     let fsname_func = if no_aliases {
         Mount::fsname
     } else {
         Mount::fsname_aliased
     };
 
-    let fsname_width = column_width(mnts, |m| fsname_func(m).len(), label_fsname);
-    let type_width = column_width(mnts, |m| m.mnt_type.len(), label_type);
-    let available_width =
-        column_width(mnts, |m| m.free_formatted(delimiter).len(), label_available);
-    let used_width = column_width(mnts, |m| m.used_formatted(delimiter).len(), label_used);
+    let fsname_width = column_width(
+        mnts,
+        |m| fsname_func(m).len(),
+        ColumnType::Filesystem.label(inodes_mode),
+    );
+    let type_width = column_width(
+        mnts,
+        |m| m.mnt_type.len(),
+        ColumnType::Type.label(inodes_mode),
+    );
+    let available_width = column_width(
+        mnts,
+        |m| m.free_formatted(delimiter).len(),
+        ColumnType::Available.label(inodes_mode),
+    );
+    let used_width = column_width(
+        mnts,
+        |m| m.used_formatted(delimiter).len(),
+        ColumnType::Used.label(inodes_mode),
+    );
     let capacity_width = column_width(
         mnts,
         |m| m.capacity_formatted(delimiter).len(),
-        label_capacity,
+        ColumnType::Capacity.label(inodes_mode),
+    );
+    let mounted_width = column_width(
+        mnts,
+        |m| m.mnt_dir.len(),
+        ColumnType::MountedOn.label(inodes_mode),
     );
 
-    println!(
-        "{:<fsname_width$} {:<type_width$} {:<bar_width$} {:>6} {:>used_width$} {:>available_width$} {:>capacity_width$} {}",
-        label_fsname.color(color_heading),
-        label_type.color(color_heading),
-        label_bar.color(color_heading),
-        label_used_percentage.color(color_heading),
-        label_available.color(color_heading),
-        label_used.color(color_heading),
-        label_capacity.color(color_heading),
-        label_mounted.color(color_heading),
-        fsname_width = fsname_width,
-        type_width = type_width,
-        bar_width = theme.bar_width,
-        used_width = used_width,
-        available_width = available_width,
-        capacity_width = capacity_width,
-    );
+    let print_heading_left_func = |column: &ColumnType, width: usize| -> String {
+        format!(
+            "{:<width$} ",
+            column.label(inodes_mode).color(color_heading),
+            width = width,
+        )
+    };
+
+    let print_heading_right_func = |column: &ColumnType, width: usize| -> String {
+        format!(
+            "{:>width$} ",
+            column.label(inodes_mode).color(color_heading),
+            width = width,
+        )
+    };
+
+    let mut line = String::new();
+    for column in &theme.columns {
+        match column {
+            ColumnType::Filesystem => {
+                line.push_str(print_heading_left_func(column, fsname_width).as_str());
+            }
+            ColumnType::Type => {
+                line.push_str(print_heading_left_func(column, type_width).as_str());
+            }
+            ColumnType::Bar => {
+                line.push_str(print_heading_left_func(column, theme.bar_width).as_str());
+            }
+            ColumnType::Used => {
+                line.push_str(print_heading_right_func(column, used_width).as_str());
+            }
+            ColumnType::UsedPercentage => {
+                line.push_str(print_heading_right_func(column, 6).as_str());
+            }
+            ColumnType::Available => {
+                line.push_str(print_heading_right_func(column, available_width).as_str());
+            }
+            ColumnType::AvailablePercentage => {
+                line.push_str(print_heading_right_func(column, 6).as_str());
+            }
+            ColumnType::Capacity => {
+                line.push_str(print_heading_right_func(column, capacity_width).as_str());
+            }
+            ColumnType::MountedOn => {
+                line.push_str(print_heading_left_func(column, mounted_width).as_str());
+            }
+        }
+    }
+    println!("{}", line.trim_end());
+
     for mnt in mnts {
         let usage_color = mnt.usage_color(theme);
 
@@ -108,22 +152,71 @@ fn display_mounts(
         }
         .color(usage_color);
 
-        println!(
-            "{:<fsname_width$} {:<type_width$} {} {} {:>used_width$} {:>available_width$} {:>size_width$} {}",
-            fsname_func(mnt),
-            mnt.mnt_type,
-            bar(theme.bar_width, mnt.used_percentage(), theme),
-            used_percentage,
-            mnt.free_formatted(delimiter).color(usage_color),
-            mnt.used_formatted(delimiter).color(usage_color),
-            mnt.capacity_formatted(delimiter).color(usage_color),
-            mnt.mnt_dir,
-            fsname_width = fsname_width,
-            type_width = type_width,
-            used_width = used_width,
-            available_width = available_width,
-            size_width = capacity_width,
-        );
+        line.clear();
+        for column in &theme.columns {
+            match column {
+                ColumnType::Filesystem => {
+                    line.push_str(
+                        format!("{:<width$} ", fsname_func(mnt), width = fsname_width).as_str(),
+                    );
+                }
+                ColumnType::Type => {
+                    line.push_str(
+                        format!("{:<width$} ", mnt.mnt_type, width = type_width).as_str(),
+                    );
+                }
+                ColumnType::Bar => {
+                    line.push_str(
+                        format!(
+                            "{:<width$} ",
+                            bar(theme.bar_width, mnt.used_percentage(), theme),
+                            width = theme.bar_width
+                        )
+                        .as_str(),
+                    );
+                }
+                ColumnType::Used => {
+                    line.push_str(
+                        format!(
+                            "{:>width$} ",
+                            mnt.used_formatted(delimiter).color(usage_color),
+                            width = used_width
+                        )
+                        .as_str(),
+                    );
+                }
+                ColumnType::UsedPercentage => {
+                    line.push_str(format!("{} ", used_percentage).as_str());
+                }
+                ColumnType::Available => {
+                    line.push_str(
+                        format!(
+                            "{:>width$} ",
+                            mnt.free_formatted(delimiter).color(usage_color),
+                            width = available_width
+                        )
+                        .as_str(),
+                    );
+                }
+                ColumnType::AvailablePercentage => {}
+                ColumnType::Capacity => {
+                    line.push_str(
+                        format!(
+                            "{:>width$} ",
+                            mnt.capacity_formatted(delimiter).color(usage_color),
+                            width = capacity_width
+                        )
+                        .as_str(),
+                    );
+                }
+                ColumnType::MountedOn => {
+                    line.push_str(
+                        format!("{:<width$} ", mnt.mnt_dir, width = mounted_width).as_str(),
+                    );
+                }
+            }
+        }
+        println!("{}", line.trim_end());
     }
 }
 

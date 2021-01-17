@@ -112,6 +112,41 @@ impl NumberFormat {
 }
 
 #[derive(Debug, StructOpt)]
+pub enum ColumnType {
+    Filesystem,
+    Type,
+    Bar,
+    Used,
+    UsedPercentage,
+    Available,
+    AvailablePercentage,
+    Capacity,
+    MountedOn,
+}
+
+impl ColumnType {
+    pub const fn label(&self, inodes_mode: bool) -> &str {
+        match self {
+            Self::Filesystem => "Filesystem",
+            Self::Type => "Type",
+            Self::Bar => "",
+            Self::Used => "Used",
+            Self::UsedPercentage => "Used%",
+            Self::Available => "Avail",
+            Self::AvailablePercentage => "Avail%",
+            Self::Capacity => {
+                if inodes_mode {
+                    "Inodes"
+                } else {
+                    "Size"
+                }
+            }
+            Self::MountedOn => "Mounted on",
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
 pub struct Completions {
     #[structopt(possible_values=&Shell::variants())]
     pub shell: Shell,

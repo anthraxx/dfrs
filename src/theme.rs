@@ -1,3 +1,4 @@
+use crate::args::ColumnType;
 use colored::*;
 
 pub struct Theme {
@@ -13,6 +14,7 @@ pub struct Theme {
     pub color_usage_high: Option<Color>,
     pub color_usage_void: Option<Color>,
     pub bar_width: usize,
+    pub columns: Vec<ColumnType>,
 }
 
 impl Theme {
@@ -30,6 +32,16 @@ impl Theme {
             color_usage_high: Some(Color::Red),
             color_usage_void: Some(Color::Blue),
             bar_width: 20,
+            columns: vec![
+                ColumnType::Filesystem,
+                ColumnType::Type,
+                ColumnType::Bar,
+                ColumnType::UsedPercentage,
+                ColumnType::Available,
+                ColumnType::Used,
+                ColumnType::Capacity,
+                ColumnType::MountedOn,
+            ],
         }
     }
 }
