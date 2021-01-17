@@ -3,6 +3,8 @@ use crate::theme::Theme;
 
 use colored::*;
 use std::cmp;
+use std::fmt;
+use std::io::{self, stdout, Write};
 use std::path::Path;
 
 pub fn format_count(num: f64, delimiter: f64) -> String {
@@ -119,6 +121,22 @@ pub fn calc_total(mnts: &[Mount]) -> Mount {
     total.capacity = mnts.iter().map(|mnt| mnt.capacity).sum();
 
     total
+}
+
+#[inline]
+pub fn try_print(args: fmt::Arguments) -> io::Result<()> {
+    stdout().write_fmt(args)
+}
+
+#[macro_export]
+macro_rules! try_print {
+    ($($arg:tt)*) => ($crate::try_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! try_println {
+    ($fmt:expr) => (try_print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (try_print!(concat!($fmt, "\n"), $($arg)*));
 }
 
 #[cfg(test)]

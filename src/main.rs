@@ -17,6 +17,7 @@ use mount::*;
 
 mod util;
 use util::bar;
+use util::try_print;
 
 use std::fs::File;
 use std::path::Path;
@@ -29,6 +30,7 @@ use env_logger::Env;
 use crate::mount::Mount;
 use anyhow::Result;
 use colored::*;
+use std::io::{stdout, Write};
 use structopt::StructOpt;
 
 #[inline]
@@ -137,7 +139,9 @@ fn display_mounts(
             }
         }
     }
-    println!("{}", line.trim_end());
+    if try_println!("{}", line.trim_end()).is_err() {
+        return;
+    }
 
     for mnt in mnts {
         let usage_color = mnt.usage_color(theme);
@@ -216,8 +220,11 @@ fn display_mounts(
                 }
             }
         }
-        println!("{}", line.trim_end());
+        if try_println!("{}", line.trim_end()).is_err() {
+            return;
+        }
     }
+    if stdout().flush().is_err() {}
 }
 
 fn run(args: Args) -> Result<()> {
