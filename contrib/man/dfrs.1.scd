@@ -30,7 +30,7 @@ Show information about the file system on which each _FILE_ resides, or all regu
 	Force colors even if stdout is not a tty. This is useful with *watch -c*
 
 *--color* [_WHEN_]
-	Colorize the output; WHEN can be 'auto' (default if omitted), 'always', or 'never'
+	Colorize the output; _WHEN_ can be 'auto' (default if omitted), 'always', or 'never'
 
 *-i*, *--inodes*
 	Show inode instead of block usage
