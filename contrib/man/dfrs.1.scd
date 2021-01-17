@@ -50,6 +50,9 @@ Show information about the file system on which each _FILE_ resides, or all regu
 *--no-aliases*
 	Do not resolve file system shorthand aliases (e.g., LVM)
 
+*--columns* [_COLUMN_]...
+	Display columns defined as a comma separated list; _COLUMN_ can be: filesystem, type, bar, used, used_percentage, available, available_percentage, capacity, mounted_on
+
 *--mounts* [_FILE_]
 	File to get mount information from (e.g., /proc/mounts or /etc/mtab)
 

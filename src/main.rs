@@ -249,7 +249,9 @@ fn run(args: Args) -> Result<()> {
     match args.subcommand {
         Some(SubCommand::Completions(completions)) => args::gen_completions(&completions)?,
         _ => {
-            let theme = Theme::new();
+            let mut theme = Theme::new();
+            theme.columns = args.columns;
+
             let delimiter = if args.base10 {
                 NumberFormat::Base10
             } else {

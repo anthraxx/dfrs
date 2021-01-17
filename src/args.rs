@@ -51,6 +51,9 @@ pub struct Args {
     pub verbose: bool,
     #[structopt(parse(from_os_str))]
     pub paths: Vec<PathBuf>,
+    /// Display columns as comma separated list
+    #[structopt(long, use_delimiter = true, default_value = "filesystem,type,bar,used_percentage,available,used,capacity,mounted_on")]
+    pub columns: Vec<ColumnType>,
     #[structopt(subcommand)]
     pub subcommand: Option<SubCommand>,
 }
@@ -111,7 +114,8 @@ impl NumberFormat {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, EnumString)]
+#[strum(serialize_all = "snake_case")]
 pub enum ColumnType {
     Filesystem,
     Type,
