@@ -5,7 +5,8 @@ use std::io::stdout;
 
 use anyhow::Result;
 use std::path::PathBuf;
-use strum_macros::EnumString;
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames, ToString};
 
 #[derive(Debug, StructOpt)]
 #[structopt(about="Display file system space usage using graphs and colors.", global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
@@ -19,8 +20,8 @@ pub struct Args {
     /// Show all
     #[structopt(long, group = "display_group")]
     pub all: bool,
-    /// Bypass tty detection for colors: auto, always, never
-    #[structopt(long, group = "color_group")]
+    /// Bypass tty detection for colors
+    #[structopt(long, group = "color_group", possible_values=&ColorOpt::VARIANTS)]
     pub color: Option<ColorOpt>,
     /// Bypass tty detection and always show colors
     #[structopt(short = "c", group = "color_group")]
@@ -52,7 +53,7 @@ pub struct Args {
     #[structopt(parse(from_os_str))]
     pub paths: Vec<PathBuf>,
     /// Display columns as comma separated list
-    #[structopt(long, use_delimiter = true, default_value = "filesystem,type,bar,used_percentage,available,used,capacity,mounted_on")]
+    #[structopt(long, use_delimiter = true, possible_values = &ColumnType::VARIANTS, default_value = "filesystem,type,bar,used_percentage,available,used,capacity,mounted_on")]
     pub columns: Vec<ColumnType>,
     #[structopt(subcommand)]
     pub subcommand: Option<SubCommand>,
@@ -65,7 +66,7 @@ pub enum SubCommand {
     Completions(Completions),
 }
 
-#[derive(Debug, StructOpt, EnumString)]
+#[derive(Debug, StructOpt, ToString, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum ColorOpt {
     Auto,
@@ -114,7 +115,7 @@ impl NumberFormat {
     }
 }
 
-#[derive(Debug, StructOpt, EnumString)]
+#[derive(Debug, StructOpt, ToString, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "snake_case")]
 pub enum ColumnType {
     Filesystem,
