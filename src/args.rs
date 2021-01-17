@@ -4,6 +4,7 @@ use structopt::StructOpt;
 use std::io::stdout;
 
 use anyhow::Result;
+use lazy_static::lazy_static;
 use std::path::PathBuf;
 use strum::VariantNames;
 use strum_macros::{EnumString, EnumVariantNames, ToString};
@@ -53,7 +54,7 @@ pub struct Args {
     #[structopt(parse(from_os_str))]
     pub paths: Vec<PathBuf>,
     /// Display columns as comma separated list
-    #[structopt(long, use_delimiter = true, possible_values = &ColumnType::VARIANTS, default_value = "filesystem,type,bar,used_percentage,available,used,capacity,mounted_on")]
+    #[structopt(long, use_delimiter = true, possible_values = &ColumnType::VARIANTS, default_value = &COLUMNS_OPT_DEFAULT_VALUE)]
     pub columns: Vec<ColumnType>,
     #[structopt(subcommand)]
     pub subcommand: Option<SubCommand>,
@@ -149,6 +150,23 @@ impl ColumnType {
             Self::MountedOn => "Mounted on",
         }
     }
+}
+
+lazy_static! {
+    static ref COLUMNS_OPT_DEFAULT_VALUE: String = vec![
+        ColumnType::Filesystem,
+        ColumnType::Type,
+        ColumnType::Bar,
+        ColumnType::UsedPercentage,
+        ColumnType::Available,
+        ColumnType::Used,
+        ColumnType::Capacity,
+        ColumnType::MountedOn
+    ]
+    .iter()
+    .map(|e| e.to_string())
+    .collect::<Vec<String>>()
+    .join(",");
 }
 
 #[derive(Debug, StructOpt)]
