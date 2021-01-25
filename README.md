@@ -27,7 +27,7 @@ Without any argument, size is displayed in human-readable format.
 
     apt install dfrs
 
-### Alpine (edge, 3.13)
+### Alpine
 
     apk add dfrs
 
