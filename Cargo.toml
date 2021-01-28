@@ -12,14 +12,14 @@ categories = ["command-line-utilities"]
 keywords = ["df", "disk", "disk-usage"]
 
 [dependencies]
-nix = "0.18"
+nix = "0.19"
 anyhow = "1.0"
 colored = "2.0"
 structopt = "0.3"
 log = "0.4"
-env_logger = "0.7"
-strum = "0.19"
-strum_macros = "0.19"
+env_logger = "0.8"
+strum = "0.20"
+strum_macros = "0.20"
 lazy_static = "1.4"
 # termcolor = "1.0"
 
