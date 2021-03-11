@@ -1,6 +1,6 @@
 # dfrs
 
-![Build Status](https://img.shields.io/github/workflow/status/anthraxx/dfrs/CI) ![Latest release](https://img.shields.io/github/v/release/anthraxx/dfrs) [![crates.io version](https://img.shields.io/crates/v/dfrs.svg)](https://crates.io/crates/dfrs) ![License](https://img.shields.io/github/license/anthraxx/dfrs)
+[![Build Status](https://img.shields.io/github/workflow/status/anthraxx/dfrs/CI)](https://github.com/anthraxx/dfrs/actions) [![Latest release](https://img.shields.io/github/v/release/anthraxx/dfrs)](https://github.com/anthraxx/dfrs/releases) [![crates.io version](https://img.shields.io/crates/v/dfrs.svg)](https://crates.io/crates/dfrs) [![License](https://img.shields.io/github/license/anthraxx/dfrs)](https://github.com/anthraxx/dfrs/blob/main/LICENSE)
 
 Display file system space usage using graphs and colors
 
