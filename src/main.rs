@@ -1,8 +1,4 @@
 #![deny(clippy::nursery, clippy::cargo)]
-extern crate anyhow;
-extern crate strum;
-extern crate strum_macros;
-
 use args::*;
 mod args;
 
