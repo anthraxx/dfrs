@@ -1,3 +1,4 @@
+#![allow(clippy::use_self)]
 use structopt::clap::{AppSettings, Shell};
 use structopt::StructOpt;
 
