@@ -17,6 +17,8 @@ Without any argument, size is displayed in human-readable format.
 
 ## Installation
 
+<a href="https://repology.org/project/dfrs/versions"><img align="right" src="https://repology.org/badge/vertical-allrepos/dfrs.svg" alt="Packaging status"></a>
+
     cargo install dfrs
 
 ### Arch Linux
