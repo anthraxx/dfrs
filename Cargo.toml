@@ -12,7 +12,7 @@ categories = ["command-line-utilities"]
 keywords = ["df", "disk", "disk-usage"]
 
 [dependencies]
-nix = "0.19"
+nix = "0.20"
 anyhow = "1.0"
 colored = "2.0"
 structopt = "0.3"
