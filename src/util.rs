@@ -117,11 +117,10 @@ pub fn cmp_by_capacity_and_dir_name(a: &Mount, b: &Mount) -> cmp::Ordering {
 
 #[inline]
 pub fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
-    if let Some(start) = filter.strip_suffix('*') {
-        mnt.mnt_fsname.starts_with(start)
-    } else {
-        mnt.mnt_fsname == filter
-    }
+    filter.strip_suffix('*').map_or_else(
+        || mnt.mnt_fsname == filter,
+        |start| mnt.mnt_fsname.starts_with(start),
+    )
 }
 
 #[inline]
