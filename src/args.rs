@@ -1,74 +1,80 @@
 #![allow(clippy::use_self)]
-use structopt::clap::{AppSettings, Shell};
-use structopt::StructOpt;
 
 use std::io::stdout;
 
-use anyhow::Result;
+use clap::CommandFactory;
+use clap::{ArgAction, Args as ClapArgs, Parser, Subcommand, ValueEnum, ValueHint};
+
+use clap_complete::{generate, Shell};
+
 use lazy_static::lazy_static;
 use std::path::PathBuf;
-use strum::VariantNames;
 use strum_macros::{EnumString, EnumVariantNames, ToString};
 
-#[derive(Debug, StructOpt)]
-#[structopt(about="Display file system space usage using graphs and colors.", global_settings = &[AppSettings::ColoredHelp, AppSettings::DeriveDisplayOrder])]
+#[derive(Debug, Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+#[command(disable_help_flag = true)]
 pub struct Args {
     /// Show more, use twice to show all
-    #[structopt(short = "a", group = "display_group", parse(from_occurrences))]
+    #[arg(short = 'a', group = "display_group", action = ArgAction::Count, )]
     pub display: u8,
     /// Show more
-    #[structopt(long, group = "display_group")]
+    #[arg(long, group = "display_group")]
     pub more: bool,
     /// Show all
-    #[structopt(long, group = "display_group")]
+    #[arg(long, group = "display_group")]
     pub all: bool,
     /// Bypass tty detection for colors
-    #[structopt(long, group = "color_group", possible_values=&ColorOpt::VARIANTS)]
+    #[arg(long, group = "color_group")]
     pub color: Option<ColorOpt>,
     /// Bypass tty detection and always show colors
-    #[structopt(short = "c", group = "color_group")]
+    #[arg(short = 'c', group = "color_group")]
     pub color_always: bool,
     /// Show inode instead of block usage
-    #[structopt(short, long)]
+    #[arg(short, long)]
     pub inodes: bool,
     /// Print sizes in powers of 1024 (e.g., 1023M)
-    #[structopt(short = "h", long = "human-readable", group = "number_format")]
+    #[arg(short = 'h', long = "human-readable", group = "number_format")]
     pub base2: bool,
     /// Print sizes in powers of 1000 (e.g., 1.1G)
-    #[structopt(short = "H", long = "si", group = "number_format")]
+    #[arg(short = 'H', long = "si", group = "number_format")]
     pub base10: bool,
     /// Produce and show a grand total
-    #[structopt(long)]
+    #[arg(long)]
     pub total: bool,
     /// Limit listing to local file systems
-    #[structopt(short, long)]
+    #[arg(short, long)]
     pub local: bool,
     /// Do not resolve file system shorthand aliases (e.g., LVM)
-    #[structopt(long)]
+    #[arg(long)]
     pub no_aliases: bool,
     /// File to get mount information from
-    #[structopt(long, parse(from_os_str), default_value = "/proc/self/mounts")]
+    #[arg(long, value_hint = ValueHint::FilePath, default_value = "/proc/self/mounts", value_name = "FILE")]
     pub mounts: PathBuf,
     /// Verbose logging
-    #[structopt(short)]
+    #[arg(short)]
     pub verbose: bool,
-    #[structopt(parse(from_os_str))]
+    #[arg(value_hint = ValueHint::AnyPath)]
     pub paths: Vec<PathBuf>,
     /// Display columns as comma separated list
-    #[structopt(long, use_delimiter = true, possible_values = &ColumnType::VARIANTS, default_value = &COLUMNS_OPT_DEFAULT_VALUE)]
+    #[arg(long, use_value_delimiter = true, default_value = &**COLUMNS_OPT_DEFAULT_VALUE)]
     pub columns: Vec<ColumnType>,
-    #[structopt(subcommand)]
+    /// Print help information
+    #[arg(long, action = ArgAction::Help, global = true)]
+    pub help: Option<bool>,
+    #[command(subcommand)]
     pub subcommand: Option<SubCommand>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum SubCommand {
     /// Generate shell completions
-    #[structopt(name = "completions")]
+    #[clap(name = "completions")]
     Completions(Completions),
 }
 
-#[derive(Debug, StructOpt, ToString, EnumString, EnumVariantNames)]
+#[derive(Debug, Clone, ValueEnum, ToString, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum ColorOpt {
     Auto,
@@ -76,7 +82,7 @@ pub enum ColorOpt {
     Never,
 }
 
-#[derive(Debug, StructOpt, EnumString)]
+#[derive(Debug, Clone, ValueEnum, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum DisplayFilter {
     Minimal,
@@ -102,7 +108,7 @@ impl DisplayFilter {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug)]
 pub enum NumberFormat {
     Base10,
     Base2,
@@ -117,8 +123,9 @@ impl NumberFormat {
     }
 }
 
-#[derive(Debug, StructOpt, ToString, EnumString, EnumVariantNames)]
+#[derive(Debug, Clone, ToString, ValueEnum, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "snake_case")]
+#[clap(rename_all = "snake_case")]
 pub enum ColumnType {
     Filesystem,
     Type,
@@ -170,13 +177,13 @@ lazy_static! {
     .join(",");
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, ClapArgs)]
 pub struct Completions {
-    #[structopt(possible_values=&Shell::variants())]
     pub shell: Shell,
 }
 
-pub fn gen_completions(args: &Completions) -> Result<()> {
-    Args::clap().gen_completions_to("dfrs", args.shell, &mut stdout());
-    Ok(())
+pub fn gen_completions(completions: &Completions) {
+    let mut cmd = Args::command();
+    let bin_name = cmd.get_name().to_string();
+    generate(completions.shell, &mut cmd, &bin_name, &mut stdout());
 }

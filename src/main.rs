@@ -26,9 +26,9 @@ use env_logger::Env;
 use crate::mount::Mount;
 use crate::util::format_percentage;
 use anyhow::Result;
+use clap::Parser;
 use colored::*;
 use std::io::{stdout, Write};
-use structopt::StructOpt;
 
 #[inline]
 fn column_width<F>(mnt: &[Mount], f: F, heading: &str) -> usize
@@ -239,7 +239,7 @@ fn run(args: Args) -> Result<()> {
     }
 
     match args.subcommand {
-        Some(SubCommand::Completions(completions)) => args::gen_completions(&completions)?,
+        Some(SubCommand::Completions(completions)) => args::gen_completions(&completions),
         _ => {
             let mut theme = Theme::new();
             theme.columns = args.columns;
@@ -339,7 +339,7 @@ fn get_mounts(
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
 
     let logging = if args.verbose { "debug" } else { "info" };
 
