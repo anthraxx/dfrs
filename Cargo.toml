@@ -12,15 +12,15 @@ categories = ["command-line-utilities"]
 keywords = ["df", "disk", "disk-usage"]
 
 [dependencies]
-nix = "0.20"
+nix = "0.25"
 anyhow = "1.0"
 colored = "2.0"
 clap = { version = "^4.0", features = ["derive", "wrap_help"] }
 clap_complete = "^4.0"
 log = "0.4"
-env_logger = "0.8"
-strum = "0.20"
-strum_macros = "0.20"
+env_logger = "0.9"
+strum = "0.24"
+strum_macros = "0.24"
 lazy_static = "1.4"
 # termcolor = "1.0"
 

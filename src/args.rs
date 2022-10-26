@@ -9,7 +9,7 @@ use clap_complete::{generate, Shell};
 
 use lazy_static::lazy_static;
 use std::path::PathBuf;
-use strum_macros::{EnumString, EnumVariantNames, ToString};
+use strum_macros::{Display, EnumString, EnumVariantNames};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -74,7 +74,7 @@ pub enum SubCommand {
     Completions(Completions),
 }
 
-#[derive(Debug, Clone, ValueEnum, ToString, EnumString, EnumVariantNames)]
+#[derive(Debug, Clone, ValueEnum, Display, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum ColorOpt {
     Auto,
@@ -123,7 +123,7 @@ impl NumberFormat {
     }
 }
 
-#[derive(Debug, Clone, ToString, ValueEnum, EnumString, EnumVariantNames)]
+#[derive(Debug, Clone, Display, ValueEnum, EnumString, EnumVariantNames)]
 #[strum(serialize_all = "snake_case")]
 #[clap(rename_all = "snake_case")]
 pub enum ColumnType {
