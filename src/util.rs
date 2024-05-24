@@ -20,18 +20,20 @@ pub fn format_count(num: f64, delimiter: f64) -> String {
 
 #[inline]
 pub fn format_percentage(percentage: Option<f32>) -> String {
-    match percentage {
-        Some(percentage) => format!(
-            "{:>5.1}{}",
-            (percentage * 10.0).round() / 10.0,
-            "%".color(Color::White)
-        ),
-        None => format!("{:>6}", "-"),
-    }
+    percentage.map_or_else(
+        || format!("{:>6}", "-"),
+        |percentage| {
+            format!(
+                "{:>5.1}{}",
+                (percentage * 10.0).round() / 10.0,
+                "%".color(Color::White)
+            )
+        },
+    )
 }
 
 pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
-    let fill_len_total = (percentage.unwrap_or(0.0) as f32 / 100.0 * width as f32).ceil() as usize;
+    let fill_len_total = (percentage.unwrap_or(0.0) / 100.0 * width as f32).ceil() as usize;
     let fill_len_low = std::cmp::min(
         fill_len_total,
         (width as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
@@ -187,7 +189,7 @@ mod tests {
 
     #[test]
     fn format_percentage_fraction() {
-        let s = format_percentage(Option::Some(0.3333333333333333f32));
+        let s = format_percentage(Option::Some(0.333_333_34_f32));
         assert_eq!(s, format!("  0.3{}", "%".color(Color::White)));
     }
 

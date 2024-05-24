@@ -182,7 +182,7 @@ none /cgroup2 cgroup2 rw,relatime 0 0
         let mounts = file
             .lines()
             .map(|line| {
-                parse_mount_line(&line)
+                parse_mount_line(line)
                     .context("Failed to parse mount line")
                     .map_err(Error::from)
             })

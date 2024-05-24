@@ -297,19 +297,16 @@ fn get_mounts(
     for mnt in &mut mnts {
         mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();
 
-        let (capacity, free) = match mnt.statfs {
-            Some(stat) => {
-                if show_inodes {
-                    (stat.files() as u64, stat.files_free() as u64)
-                } else {
-                    (
-                        stat.blocks() as u64 * (stat.block_size() as u64),
-                        stat.blocks_available() as u64 * (stat.block_size() as u64),
-                    )
-                }
+        let (capacity, free) = mnt.statfs.map_or((0, 0), |stat| {
+            if show_inodes {
+                (stat.files(), stat.files_free())
+            } else {
+                (
+                    stat.blocks() * (stat.block_size() as u64),
+                    stat.blocks_available() * (stat.block_size() as u64),
+                )
             }
-            None => (0, 0),
-        };
+        });
 
         mnt.capacity = capacity;
         mnt.free = free;

@@ -161,7 +161,7 @@ impl ColumnType {
 }
 
 lazy_static! {
-    static ref COLUMNS_OPT_DEFAULT_VALUE: String = vec![
+    static ref COLUMNS_OPT_DEFAULT_VALUE: String = [
         ColumnType::Filesystem,
         ColumnType::Type,
         ColumnType::Bar,
