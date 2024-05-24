@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Mount {
     pub mnt_fsname: String,
