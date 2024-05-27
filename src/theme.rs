@@ -17,8 +17,8 @@ pub struct Theme {
     pub columns: Vec<ColumnType>,
 }
 
-impl Theme {
-    pub fn new() -> Self {
+impl Default for Theme {
+    fn default() -> Self {
         Self {
             char_bar_filled: named_char::HEAVY_BOX,
             char_bar_empty: named_char::HEAVY_DOUBLE_DASH,
