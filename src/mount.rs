@@ -152,11 +152,7 @@ fn parse_mount_line(line: &str) -> Result<Mount> {
 pub fn parse_mounts(f: File) -> Result<Vec<Mount>> {
     BufReader::new(f)
         .lines()
-        .map(|line| {
-            parse_mount_line(&line?)
-                .context("Failed to parse mount line")
-                .map_err(Error::from)
-        })
+        .map(|line| parse_mount_line(&line?).context("Failed to parse mount line"))
         .collect::<Result<Vec<_>>>()
 }
 
