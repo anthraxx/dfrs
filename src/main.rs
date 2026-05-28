@@ -274,6 +274,7 @@ fn run(args: Args) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
 fn get_mounts(
     mounts_to_show: &DisplayFilter,
     show_inodes: bool,
@@ -281,7 +282,7 @@ fn get_mounts(
     mounts: &Path,
     local_only: bool,
 ) -> Result<Vec<Mount>> {
-    let f = File::open(mounts)?;
+    let f = File::open(mounts).with_context(|| format!("Failed to open: {mounts:?}"))?;
 
     let mut mnts = parse_mounts(f)?;
     mnts.retain(|mount| {
@@ -311,6 +312,93 @@ fn get_mounts(
         mnt.capacity = capacity;
         mnt.free = free;
         mnt.used = capacity - free;
+    }
+
+    if !paths.is_empty() {
+        let mut out = Vec::new();
+        for path in paths {
+            let path = match path.canonicalize() {
+                Ok(path) => path,
+                Err(err) => {
+                    eprintln!("dfrs: {}: {}", path.display(), err);
+                    continue;
+                }
+            };
+
+            if let Some(mnt) = util::get_best_mount_match(&path, &mnts) {
+                out.push(mnt.clone());
+            }
+        }
+        return Ok(out);
+    }
+
+    mnts.sort_by(util::cmp_by_capacity_and_dir_name);
+    Ok(mnts)
+}
+
+#[cfg(target_os = "macos")]
+fn get_mounts(
+    mounts_to_show: &DisplayFilter,
+    show_inodes: bool,
+    paths: &[PathBuf],
+    mounts: &Path,
+    local_only: bool,
+) -> Result<Vec<Mount>> {
+    use nix::libc::{getmntinfo, statfs, MNT_NOWAIT};
+    use std::ffi::CStr;
+    use std::slice;
+
+    let mounts = unsafe {
+        // getmntinfo allocates/owns this buffer
+        let mut mounts_ptr: *mut statfs = std::ptr::null_mut();
+
+        let count = getmntinfo(&mut mounts_ptr, MNT_NOWAIT);
+
+        if count <= 0 {
+            return Err(std::io::Error::last_os_error().into());
+        }
+
+        slice::from_raw_parts(mounts_ptr, count as usize)
+    };
+
+    let mut mnts = Vec::new();
+
+    for mount in mounts {
+        let mount_point = unsafe { CStr::from_ptr(mount.f_mntonname.as_ptr()) }.to_string_lossy();
+        let device = unsafe { CStr::from_ptr(mount.f_mntfromname.as_ptr()) }.to_string_lossy();
+        let fs_type = unsafe { CStr::from_ptr(mount.f_fstypename.as_ptr()) }.to_string_lossy();
+
+        let (capacity, free) = if show_inodes {
+            (mount.f_files as u64, mount.f_ffree as u64)
+        } else {
+            (
+                mount.f_blocks as u64 * mount.f_bsize as u64,
+                mount.f_bavail as u64 * mount.f_bsize as u64,
+            )
+        };
+
+        mnts.push(Mount {
+            mnt_fsname: device.into_owned(),
+            mnt_dir: mount_point.into_owned(),
+            mnt_type: fs_type.into_owned(),
+            mnt_opts: String::new(),
+            mnt_freq: 0,
+            mnt_passno: 0,
+            capacity,
+            free,
+            used: capacity - free,
+            statfs: None,
+        });
+    }
+
+    mnts.retain(|mount| {
+        mounts_to_show
+            .get_mnt_fsname_filter()
+            .iter()
+            .any(|fsname| util::mnt_matches_filter(mount, fsname))
+    });
+    if local_only {
+        mnts.retain(Mount::is_local);
     }
 
     if !paths.is_empty() {
