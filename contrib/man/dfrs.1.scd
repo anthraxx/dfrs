@@ -54,7 +54,7 @@ Show information about the file system on which each _FILE_ resides, or all regu
 	Display columns defined as a comma separated list; _COLUMN_ can be: filesystem, type, bar, used, used_percentage, available, available_percentage, capacity, mounted_on
 
 *--mounts* [_FILE_]
-	File to get mount information from (e.g., /proc/mounts or /etc/mtab)
+	Override native mount discovery with a mount listing file (e.g., /proc/mounts or /etc/mtab)
 
 *-V*, *--version*
 	Prints version information

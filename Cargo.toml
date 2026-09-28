@@ -1,9 +1,10 @@
 [package]
 name = "dfrs"
-version = "0.0.7"
+version = "0.8.0"
 description = "Display file system space usage using graphs and colors"
 authors = ["anthraxx <levente@leventepolyak.net>"]
 edition = "2021"
+rust-version = "1.96"
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/anthraxx/dfrs"
@@ -13,6 +14,7 @@ keywords = ["df", "disk", "disk-usage"]
 
 [dependencies]
 nix = { version = "0.29", features = ["fs"] }
+libc = "0.2"
 anyhow = "1.0"
 colored = "2.1"
 clap = { version = "^4.5", features = ["derive", "wrap_help"] }

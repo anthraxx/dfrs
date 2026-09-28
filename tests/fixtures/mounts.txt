@@ -1,0 +1,3 @@
+/dev/test-root / ext4 rw,relatime 0 0
+tmpfs /proc tmpfs rw,nosuid,nodev,noexec,relatime 0 0
+/dev/test-data /Volumes/My\040Data apfs rw 0 0

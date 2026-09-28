@@ -1,3 +1,10 @@
+//! Command-line parsing and display-policy types for the `dfrs` executable.
+//!
+//! The binary deliberately keeps its public interface in the CLI rather than
+//! exposing a library API. These types are still documented because the
+//! generated RustDoc is part of the project documentation and explains how
+//! command-line values flow into discovery and rendering.
+
 #![allow(clippy::use_self)]
 
 use std::io::stdout;
@@ -11,6 +18,11 @@ use lazy_static::lazy_static;
 use std::path::PathBuf;
 use strum_macros::{Display, EnumString, VariantNames};
 
+/// Parsed command-line arguments for `dfrs`.
+///
+/// The important compatibility rule is that existing flags retain their
+/// meaning. In particular, `--mounts PATH` is an explicit fixture or mount
+/// listing override; when it is absent, the platform mount provider is used.
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -49,12 +61,13 @@ pub struct Args {
     /// Do not resolve file system shorthand aliases (e.g., LVM)
     #[arg(long)]
     pub no_aliases: bool,
-    /// File to get mount information from
-    #[arg(long, value_hint = ValueHint::FilePath, default_value = "/proc/self/mounts", value_name = "FILE")]
-    pub mounts: PathBuf,
+    /// Read mount information from FILE instead of native platform discovery
+    #[arg(long, value_hint = ValueHint::FilePath, value_name = "FILE")]
+    pub mounts: Option<PathBuf>,
     /// Verbose logging
     #[arg(short)]
     pub verbose: bool,
+    /// Path targets whose containing filesystems should be reported
     #[arg(value_hint = ValueHint::AnyPath)]
     pub paths: Vec<PathBuf>,
     /// Display columns as comma separated list
@@ -63,10 +76,12 @@ pub struct Args {
     /// Print help information
     #[arg(long, action = ArgAction::Help, global = true)]
     pub help: Option<bool>,
+    /// Optional shell-completion generator command
     #[command(subcommand)]
     pub subcommand: Option<SubCommand>,
 }
 
+/// Subcommands supported by the executable.
 #[derive(Debug, Subcommand)]
 pub enum SubCommand {
     /// Generate shell completions
@@ -74,23 +89,32 @@ pub enum SubCommand {
     Completions(Completions),
 }
 
+/// Controls automatic, forced, or disabled color output.
 #[derive(Debug, Clone, ValueEnum, Display, EnumString, VariantNames)]
 #[strum(serialize_all = "lowercase")]
 pub enum ColorOpt {
+    /// Follow terminal detection.
     Auto,
+    /// Always emit ANSI color sequences.
     Always,
+    /// Never emit ANSI color sequences.
     Never,
 }
 
+/// Controls the breadth of the default filesystem listing.
 #[derive(Debug, Clone, ValueEnum, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum DisplayFilter {
+    /// Show capacity-bearing non-pseudo filesystems.
     Minimal,
+    /// Include inspectable pseudo filesystems.
     More,
+    /// Include every discovered mount record.
     All,
 }
 
 impl DisplayFilter {
+    /// Convert the legacy counted `-a` option into the named display policy.
     pub const fn from_u8(n: u8) -> Self {
         match n {
             0 => Self::Minimal,
@@ -99,6 +123,10 @@ impl DisplayFilter {
         }
     }
 
+    /// Return the compatibility filters used for explicit mount-file inputs.
+    ///
+    /// Native discovery uses filesystem metadata instead, which lets it retain
+    /// APFS, ZFS, and squashfs without depending on a device-name convention.
     pub fn get_mnt_fsname_filter(&self) -> Vec<&'static str> {
         match self {
             Self::Minimal => vec!["/dev*", "storage"],
@@ -108,6 +136,7 @@ impl DisplayFilter {
     }
 }
 
+/// Numeric formatting policy used by the table renderer.
 #[derive(Debug)]
 pub enum NumberFormat {
     Base10,
@@ -115,6 +144,7 @@ pub enum NumberFormat {
 }
 
 impl NumberFormat {
+    /// Return the radix used to choose human-readable units.
     pub const fn get_powers_of(&self) -> f64 {
         match self {
             Self::Base10 => 1000_f64,
@@ -123,22 +153,33 @@ impl NumberFormat {
     }
 }
 
+/// A named column in the terminal report.
 #[derive(Debug, Clone, Display, ValueEnum, EnumString, VariantNames)]
 #[strum(serialize_all = "snake_case")]
 #[clap(rename_all = "snake_case")]
 pub enum ColumnType {
+    /// Filesystem source name.
     Filesystem,
+    /// Filesystem type.
     Type,
+    /// Colored usage bar.
     Bar,
+    /// Used capacity.
     Used,
+    /// Used percentage.
     UsedPercentage,
+    /// Available capacity.
     Available,
+    /// Available percentage.
     AvailablePercentage,
+    /// Total capacity.
     Capacity,
+    /// Mount directory.
     MountedOn,
 }
 
 impl ColumnType {
+    /// Return the heading rendered for this column.
     pub const fn label(&self, inodes_mode: bool) -> &str {
         match self {
             Self::Filesystem => "Filesystem",
@@ -177,6 +218,7 @@ lazy_static! {
     .join(",");
 }
 
+/// Arguments for the shell-completion generator subcommand.
 #[derive(Debug, ClapArgs)]
 pub struct Completions {
     pub shell: Shell,

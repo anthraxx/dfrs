@@ -1,3 +1,10 @@
+//! Small, side-effect-free helpers shared by discovery and table rendering.
+//!
+//! These functions own the low-level details that are easy to get subtly
+//! wrong in a terminal utility: unit scaling, percentage formatting, bounded
+//! bars, mount-path matching, deterministic ordering, and overflow-safe
+//! totals.
+
 use crate::mount::Mount;
 use crate::theme::Theme;
 
@@ -7,6 +14,7 @@ use std::fmt;
 use std::io::{self, stdout, Write};
 use std::path::Path;
 
+/// Format a byte or inode count using a decimal or binary unit delimiter.
 pub fn format_count(num: f64, delimiter: f64) -> String {
     let units = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
     if num < 1_f64 {
@@ -19,6 +27,7 @@ pub fn format_count(num: f64, delimiter: f64) -> String {
 }
 
 #[inline]
+/// Format an optional percentage for a six-character table column.
 pub fn format_percentage(percentage: Option<f32>) -> String {
     percentage.map_or_else(
         || format!("{:>6}", "-"),
@@ -32,8 +41,14 @@ pub fn format_percentage(percentage: Option<f32>) -> String {
     )
 }
 
+/// Render a bounded colored usage bar for the configured terminal theme.
 pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
-    let fill_len_total = (percentage.unwrap_or(0.0) / 100.0 * width as f32).ceil() as usize;
+    let normalized_percentage = percentage
+        .filter(|value| value.is_finite())
+        .map(|value| value.clamp(0.0, 100.0));
+    let fill_len_total = (normalized_percentage.unwrap_or(0.0) / 100.0 * width as f32)
+        .ceil()
+        .min(width as f32) as usize;
     let fill_len_low = std::cmp::min(
         fill_len_total,
         (width as f32 * theme.threshold_usage_medium / 100.0).ceil() as usize,
@@ -42,7 +57,7 @@ pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
         fill_len_total,
         (width as f32 * theme.threshold_usage_high / 100.0).ceil() as usize,
     ) - fill_len_low;
-    let fill_len_high = fill_len_total - fill_len_low - fill_len_medium;
+    let fill_len_high = fill_len_total.saturating_sub(fill_len_low + fill_len_medium);
 
     let color_empty = match percentage {
         Some(_) => theme.color_usage_low,
@@ -68,7 +83,7 @@ pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
     let empty = theme
         .char_bar_empty
         .to_string()
-        .repeat(width - fill_len_total)
+        .repeat(width.saturating_sub(fill_len_total))
         .color(color_empty);
 
     format!(
@@ -77,6 +92,7 @@ pub fn bar(width: usize, percentage: Option<f32>, theme: &Theme) -> String {
     )
 }
 
+/// Convert an escaped device-mapper name into a shorter `/dev/VG/LV` label.
 pub fn lvm_alias(device: &str) -> Option<String> {
     if !device.starts_with("/dev/mapper/") {
         return None;
@@ -92,17 +108,19 @@ pub fn lvm_alias(device: &str) -> Option<String> {
 }
 
 #[inline]
+/// Return the deepest mount whose directory is a path prefix.
 pub fn get_best_mount_match<'a>(path: &Path, mnts: &'a [Mount]) -> Option<&'a Mount> {
     let scores = mnts
         .iter()
         .map(|mnt| (calculate_path_match_score(path, mnt), mnt));
-    let best = scores.max_by_key(|x| x.0)?;
+    let best = scores.filter(|x| x.0 > 0).max_by_key(|x| x.0)?;
     Some(best.1)
 }
 
 #[inline]
+/// Score a mount by the length of its directory path prefix.
 pub fn calculate_path_match_score(path: &Path, mnt: &Mount) -> usize {
-    if path.starts_with(&mnt.mnt_dir) {
+    if path.starts_with(Path::new(&mnt.mnt_dir)) {
         mnt.mnt_dir.len()
     } else {
         0
@@ -110,14 +128,17 @@ pub fn calculate_path_match_score(path: &Path, mnt: &Mount) -> usize {
 }
 
 #[inline]
+/// Order records by inspectability, then by mount directory.
 pub fn cmp_by_capacity_and_dir_name(a: &Mount, b: &Mount) -> cmp::Ordering {
-    u64::min(1, a.capacity)
-        .cmp(&u64::min(1, b.capacity))
+    a.capacity
+        .min(1)
+        .cmp(&b.capacity.min(1))
         .reverse()
         .then(a.mnt_dir.cmp(&b.mnt_dir))
 }
 
 #[inline]
+/// Match an exact filesystem source or a source prefix ending in `*`.
 pub fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
     filter.strip_suffix('*').map_or_else(
         || mnt.mnt_fsname == filter,
@@ -126,17 +147,25 @@ pub fn mnt_matches_filter(mnt: &Mount, filter: &str) -> bool {
 }
 
 #[inline]
+/// Sum a report's counters without allowing a `u64` wraparound.
 pub fn calc_total(mnts: &[Mount]) -> Mount {
     let mut total = Mount::named("total".to_string());
 
-    total.free = mnts.iter().map(|mnt| mnt.free).sum();
-    total.used = mnts.iter().map(|mnt| mnt.used).sum();
-    total.capacity = mnts.iter().map(|mnt| mnt.capacity).sum();
+    total.free = mnts
+        .iter()
+        .fold(0_u64, |sum, mnt| sum.saturating_add(mnt.free));
+    total.used = mnts
+        .iter()
+        .fold(0_u64, |sum, mnt| sum.saturating_add(mnt.used));
+    total.capacity = mnts
+        .iter()
+        .fold(0_u64, |sum, mnt| sum.saturating_add(mnt.capacity));
 
     total
 }
 
 #[inline]
+/// Write formatted output while allowing a broken pipe to stop the report.
 pub fn try_print(args: fmt::Arguments) -> io::Result<()> {
     stdout().write_fmt(args)
 }

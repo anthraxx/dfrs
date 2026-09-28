@@ -1,4 +1,13 @@
 #![deny(clippy::nursery, clippy::cargo)]
+//! `dfrs` is a terminal-only filesystem usage viewer.
+//!
+//! The executable follows a small pipeline: parse the CLI, discover mounts
+//! through the platform provider, collect `statfs` counters, apply the
+//! df-like visibility policy, and render the selected columns. The crate is a
+//! binary rather than a reusable library, so these RustDoc comments describe
+//! CLI behavior and implementation seams for maintainers and downstream
+//! packagers.
+
 use args::*;
 mod args;
 
@@ -15,11 +24,8 @@ mod util;
 use util::bar;
 use util::try_print;
 
-use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
-
-use nix::sys::statfs;
 
 use env_logger::Env;
 
@@ -31,6 +37,7 @@ use colored::*;
 use std::io::{stdout, Write};
 
 #[inline]
+/// Calculate the widest cell needed for one table column.
 fn column_width<F>(mnt: &[Mount], f: F, heading: &str) -> usize
 where
     F: Fn(&Mount) -> usize,
@@ -39,9 +46,10 @@ where
         .map(f)
         .chain(std::iter::once(heading.len()))
         .max()
-        .unwrap()
+        .unwrap_or(heading.len())
 }
 
+/// Render a complete report, including headings, bars, colors, and rows.
 fn display_mounts(
     mnts: &[Mount],
     theme: &Theme,
@@ -219,6 +227,7 @@ fn display_mounts(
     if stdout().flush().is_err() {}
 }
 
+/// Execute the parsed CLI command and return any user-facing failure.
 fn run(args: Args) -> Result<()> {
     if let Some(color) = args.color {
         debug!("Bypass tty detection for colors: {:?}", color);
@@ -261,7 +270,7 @@ fn run(args: Args) -> Result<()> {
                 &mounts_to_show,
                 args.inodes,
                 &args.paths,
-                &args.mounts,
+                args.mounts.as_deref(),
                 args.local,
             )?;
             if args.total {
@@ -274,43 +283,24 @@ fn run(args: Args) -> Result<()> {
     Ok(())
 }
 
+/// Discover, measure, filter, path-select, and sort mount records.
 fn get_mounts(
     mounts_to_show: &DisplayFilter,
     show_inodes: bool,
     paths: &[PathBuf],
-    mounts: &Path,
+    mounts: Option<&Path>,
     local_only: bool,
 ) -> Result<Vec<Mount>> {
-    let f = File::open(mounts)?;
-
-    let mut mnts = parse_mounts(f)?;
-    mnts.retain(|mount| {
-        mounts_to_show
-            .get_mnt_fsname_filter()
-            .iter()
-            .any(|fsname| util::mnt_matches_filter(mount, fsname))
-    });
-    if local_only {
-        mnts.retain(Mount::is_local);
-    }
+    let native_discovery = mounts.is_none();
+    let mut mnts = discover_mounts(mounts)?;
 
     for mnt in &mut mnts {
-        mnt.statfs = statfs::statfs(&mnt.mnt_dir[..]).ok();
+        mnt.refresh_stats(show_inodes);
+    }
 
-        let (capacity, free) = mnt.statfs.map_or((0, 0), |stat| {
-            if show_inodes {
-                (stat.files(), stat.files_free())
-            } else {
-                (
-                    stat.blocks() * (stat.block_size() as u64),
-                    stat.blocks_available() * (stat.block_size() as u64),
-                )
-            }
-        });
-
-        mnt.capacity = capacity;
-        mnt.free = free;
-        mnt.used = capacity - free;
+    mnts.retain(|mount| mount.matches_display_filter(mounts_to_show, native_discovery));
+    if local_only {
+        mnts.retain(Mount::is_local);
     }
 
     if !paths.is_empty() {
@@ -335,6 +325,7 @@ fn get_mounts(
     Ok(mnts)
 }
 
+/// Parse arguments, initialize logging, and report failures to stderr.
 fn main() {
     let args = Args::parse();
 
